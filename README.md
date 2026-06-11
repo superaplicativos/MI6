@@ -1,75 +1,80 @@
-# 🕵️‍♂️ MI-X: Operação Eclipse (MI6 Game)
+# 🕵️‍♂️ MI-X: Operação Eclipse (Web Retro FPS Engine)
 
-[![Claude Fable V1.0](https://img.shields.io/badge/Developed%20with-Claude%20Fable-blueviolet?style=for-the-badge)](https://anthropic.com)
-[![Version 1.0](https://img.shields.io/badge/Version-1.0-green?style=for-the-badge)](./)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![Claude Fable V1.0](https://img.shields.io/badge/Developed%20with-Claude%20Fable-blueviolet?style=for-the-badge)](#)
+[![Three.js](https://img.shields.io/badge/Engine-Three.js-black?style=for-the-badge)](#)
+[![Status](https://img.shields.io/badge/Status-Procurando%20Contribuidores-success?style=for-the-badge)](#)
 
-> Um clone espiritual web do clássico **007 contra GoldenEye (N64)**, construído puramente com tecnologias web modernas (`HTML5`, `CSS3`, `Vanilla JavaScript` e `Three.js`). Desenvolvido em parceria com a inteligência artificial **Claude Fable**.
+> Um FPS furtivo de espionagem focado na estética e nas mecânicas da era 64-bits (especialmente *007 GoldenEye*). Desenvolvido inteiramente como uma **Single-File Engine**, rodando direto no navegador sem necessidade de emuladores, downloads ou requisições de assets externos.
 
-O projeto encontra-se em sua **versão 1.0**, entregando uma base jogável em primeira pessoa (FPS) retro, leve, sem necessidade de emuladores ou downloads, rodando direto no navegador a 60 FPS com baixa resolução proposital para replicar a estética marcante dos anos 90.
+## 🎯 Visão do Produto
 
----
+O **MI-X: Operação Eclipse** não é apenas um jogo, é um experimento arquitetural e de produto. O objetivo foi provar que é possível entregar uma experiência 3D completa, com inteligência artificial, física simplificada, áudio dinâmico e múltiplas missões, tudo encapsulado dentro de um único arquivo `index.html`. 
 
-## 🎮 Demonstração / Como Jogar
-
-Como o jogo é composto por um único arquivo estático de vanguarda, basta abrir o `index.html` em qualquer navegador moderno.
-
-### 🕹️ Controles
-*   **WASD**: Movimentação do Agente 09.
-*   **MOUSE**: Mirar (Trava de ponteiro inclusa).
-*   **CLIQUE ESQUERDO**: Atirar (Segure para disparo automático com o Fuzil).
-*   **R**: Recarregar arma.
-*   **1 / 2**: Trocar entre Pistola Silenciada e Fuzil de Assalto.
-*   **E (Segurar)**: Interagir com objetos (Hackear terminais, Plantar explosivos, Abrir cofres).
-*   **TAB / ESC**: Pausar / Abrir o Relógio de Missão clássico.
-*   **M**: Ligar/Desligar a trilha sonora adaptativa.
+Todo o desenvolvimento foi assistido pela IA **Claude Fable**, resultando em um código vanilla altamente otimizado que gera seus próprios assets proceduralmente no momento da execução.
 
 ---
 
-## 🛠️ Recursos Atuais (v1.0)
+## ⚙️ Arquitetura Técnica & Engine
 
-O motor do jogo foi construído do zero (`Custom Single-File Engine`) e já conta com as seguintes mecânicas prontas:
+Para manter a filosofia de *Zero Network Requests* (além da biblioteca base), o jogo utiliza técnicas avançadas de geração procedural[cite: 1]:
 
-*   **Renderização Retrô**: Filtro pixelado simulando a resolução original do Nintendo 64 usando técnicas de downsampling no canvas do `Three.js`.
-*   **Texturas Dinâmicas**: Geradas via código (`HTML5 Canvas Context 2D`) em tempo real, evitando requisições HTTP externas de imagens e mantendo o código ultraleve.
-*   **Áudio Procedural**: Sons de tiros (silenciados e pesados), passos, alarmes e explosões gerados nativamente através da `Web Audio API` (Osciladores e Nós de Ganho).
-*   **Trilha Sonora Adaptativa**: Sistema de áudio que muda o padrão da música de fundo caso os inimigos entrem em estado de alerta.
-*   **Miras Assistidas**: Sistema de auxílio de mira sutil para simular a jogabilidade fluida de consoles antigos no PC.
-*   **Duas Missões Completas**:
-    1.  **Complexo Vektra**: Infiltração noturna tática baseada em furtividade e sabotagem de geradores.
-    2.  **Represa Krava**: Mapa longo diurno, com portões trancados, coleta de armas do cenário, galeria técnica interna com emissão de vapor e fuga por rapel.
-*   **5 Classes de Inimigos**: Comum, Guarda de Campo, Oficial, Sniper de longa distância e Soldado de Elite.
+### 🎨 Texturização Procedural (Canvas 2D)
+Nenhum arquivo `.png` ou `.jpg` é carregado. Todas as texturas são desenhadas pixel a pixel em tempo de execução usando a API do Canvas do HTML5 e convertidas para `THREE.CanvasTexture`[cite: 1].
+*   **Geradores de Ruído:** Algoritmos customizados (`ruido()`, `manchas()`) criam imperfeições realistas em concreto, asfalto, terra e metal[cite: 1].
+*   **Materiais Dinâmicos:** Painéis de LED, telas de CRT com *scanlines* e água com animação de fluxo (offset dinâmico)[cite: 1].
 
----
+### 🎵 Sistema de Áudio (Web Audio API)
+Sintetizadores nativos do navegador substituem arquivos `.mp3` ou `.wav`[cite: 1].
+*   **SFX Baseado em Ruído:** Tiros, passos e explosões são criados injetando *White Noise* em buffers de áudio filtrados por `BiquadFilters` e controlados por envelopes de decaimento exponencial (`exponentialRampToValueAtTime`)[cite: 1].
+*   **Trilha Sonora Adaptativa:** Uma rotina de step-sequencer lê arrays de frequências (`padraoCalmo` e `padraoAlerta`) e muda a música dinamicamente se algum inimigo no mapa entrar em estado de alerta[cite: 1].
 
-## 🚀 Próximos Passos & O que estamos buscando (Contribua!)
-
-O core do jogo está sólido, mas queremos levar o **MI-X** para o próximo nível. Se você é desenvolvedor JavaScript, artista técnico Three.js, ou entusiasta de Web Audio, **sua contribuição é muito bem-vinda!**
-
-### 🎯 Roadmap de Melhorias:
-*   [ ] **Sistema de Inteligência Artificial Avançado**: Adicionar caminhos de patrulha mais complexos e reações a corpos caídos.
-*   [ ] **Novas Armas**: Implementação de minas de proximidade (Proximity Mines), lançadores de foguetes e a icônica faca de arremesso.
-*   [ ] **Modelos 3D de Baixo Polígono (Low-Poly)**: Substituir as caixas de colisão dos guardas e armas por meshes texturizados retrô (formato `.gltf` ou `.obj`).
-*   [ ] **Efeitos Visuais**: Sprites de sangue 2D (estilo outdoor), estilhaços físicos ao atirar nas paredes e animações de recarregamento mais detalhadas.
-*   [ ] **Otimização de Colisão**: Migrar o array de colisores retangulares simples para um sistema de octree ou bounding boxes nativas mais escalável.
+### 🧠 Inteligência Artificial (State Machine)
+Os NPCs (Guardas) operam através de uma máquina de estados finita:
+*   **Patrulha:** Seguem *waypoints* predefinidos.
+*   **Visão e Audição:** Utilizam Raycasting (`THREE.Raycaster`) para linha de visão (LOS) atrelado a um cone de visão e reagem a ruídos de tiros não silenciados[cite: 1].
+*   **Alerta:** Ao detectarem o Agente 09, disparam alarmes locais que encadeiam o estado de alerta para outros guardas próximos[cite: 1].
 
 ---
 
-## 🤝 Como Contribuir
+## 🔫 Arsenal & Combate
 
-1. Faça um **Fork** do projeto.
-2. Crie uma branch para sua feature: `git checkout -b feature/minha-melhoria`.
-3. Faça o commit de suas alterações: `git commit -m 'Adiciona novos efeitos visuais retrô'`.
-4. Envie para a branch original: `git push origin feature/minha-melhoria`.
-5. Abra um **Pull Request**.
+O jogo implementa balística via *Raycasting* instantâneo (Hitscan) com mecânicas de *cooldown*, recuo da câmera (recoil) e dispersão[cite: 1].
 
-*Sinta-se livre para abrir Issues para relatar bugs ou sugerir novas ideias de missões!*
+| Arma | Tipo | Munição | Ruído | Dano (Headshot) | Características |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **PX-7 Silenciada** | Pistola | 7 / 35 | Baixo (8m) | Hit-Kill | A arma primária do espião. Discreta, letal em distâncias curtas e não aciona alarmes ao redor[cite: 1]. |
+| **RV-9 Fuzil** | Automático | 30 / 60 | Alto (30m) | Hit-Kill | Encontrada no cenário. Alta cadência e dispersão. Um disparo atrai toda a base[cite: 1]. |
+
+> **Dica de Design:** O jogo conta com um sistema de **Aim Assist** suave no eixo central (indicado por um anel vermelho no HUD) que ajuda na aquisição de alvos, replicando o "feeling" da mira solta dos controles analógicos antigos[cite: 1].
+
+---
+
+## 🗺️ Missões Disponíveis (v1.0)
+
+O nível de design foca em múltiplas rotas e objetivos que devem ser concluídos antes da extração[cite: 1].
+
+### MISSÃO 01: Complexo Vektra (Noturna)
+Infiltração furtiva em uma área industrial sob forte esquema de segurança.
+*   **Estética:** Iluminação azulada (HemisphereLight), neblina densa, lua geradora de sombras dramáticas[cite: 1].
+*   **Objetivos:**
+    1. Localizar e hackear o terminal de dados na ala leste[cite: 1].
+    2. Plantar explosivos no núcleo do gerador principal na ala oeste[cite: 1].
+    3. Alcançar o ponto de extração seguro[cite: 1].
+
+### MISSÃO 02: Represa Krava (Diurna / Longa)
+Uma jornada épica pelas montanhas até uma colossal obra de engenharia militar.
+*   **Estética:** Céu nublado, abismos, paredões de rocha e um rio correndo no fundo de um canyon de 70 metros de profundidade[cite: 1].
+*   **Objetivos:**
+    1. Invadir a guarita de segurança para destravar o portão principal do checkpoint[cite: 1].
+    2. Encontrar a entrada leste da galeria técnica para sabotar a rede de transformadores[cite: 1].
+    3. Infiltrar-se no prédio administrativo e arrombar o cofre do comandante para roubar projetos secretos[cite: 1].
 
 ---
 
-## 📄 Licença
+## 🚀 Como Rodar o Jogo
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Como a engine é puramente Client-Side e contida, a execução é imediata:
 
----
-Developed with 💚 by the community & Claude Fable.
+1. Clone o repositório:
+```bash
+   git clone [https://github.com/seu-usuario/mi-x-eclipse.git](https://github.com/seu-usuario/mi-x-eclipse.git)
