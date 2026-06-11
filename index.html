@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MI-X: Operação Eclipse</title>
+<style>
+  :root{ --verde:#a6e22e; --ambar:#ffc04d; --verm:#ff4f3d; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Courier New',monospace;}
+  #game{position:fixed;inset:0;width:100vw;height:100vh;}
+  #vinheta{position:fixed;inset:0;pointer-events:none;z-index:4;
+    background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.45) 100%);}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10;}
+  /* HUD */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5;display:none;}
+  #cross{position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;
+    background:rgba(230,240,255,.9);transform:translate(-50%,-50%);box-shadow:0 0 3px #000;}
+  #crossAnel{position:absolute;left:50%;top:50%;width:26px;height:26px;border:2px solid var(--verm);
+    border-radius:50%;transform:translate(-50%,-50%);opacity:0;transition:opacity .1s;}
+  #vida{position:absolute;left:20px;bottom:20px;width:190px;}
+  .barraRot{color:#cfe;font-size:10px;letter-spacing:3px;text-shadow:1px 1px 0 #000;margin-bottom:2px;}
+  .barra{width:100%;height:11px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.25);margin-bottom:7px;}
+  .barra>div{height:100%;transition:width .15s;}
+  #vidaFill{background:linear-gradient(#c8f06a,#7ab32a);width:100%;}
+  #colFill{background:linear-gradient(#7ec8ff,#2a6ab3);width:0%;}
+  #municao{position:absolute;right:24px;bottom:20px;color:#eef;font-size:34px;
+    text-shadow:2px 2px 2px #000;text-align:right;font-weight:bold;}
+  #municao small{font-size:11px;color:#9bb;display:block;letter-spacing:3px;font-weight:normal;}
+  #objs{position:absolute;left:20px;top:18px;background:rgba(4,8,6,.7);border-left:3px solid var(--verde);
+    padding:8px 14px;color:#cde;font-size:11.5px;line-height:1.8;backdrop-filter:blur(2px);}
+  #objs .ok{color:var(--verde);} #objs .pend{color:var(--ambar);} #objs .off{color:#3a4a55;}
+  #msg{position:absolute;left:50%;top:20%;transform:translateX(-50%);color:var(--ambar);font-size:17px;
+    text-shadow:2px 2px 0 #000;text-align:center;opacity:0;transition:opacity .35s;letter-spacing:1px;}
+  #prompt{position:absolute;left:50%;top:58%;transform:translateX(-50%);color:#fff;font-size:13px;
+    background:rgba(4,8,6,.8);border:1px solid #575;padding:7px 16px;display:none;letter-spacing:2px;}
+  #prog{position:absolute;left:50%;top:65%;transform:translateX(-50%);width:230px;height:9px;
+    border:1px solid #8a8;background:rgba(0,0,0,.7);display:none;}
+  #progFill{height:100%;width:0%;background:var(--ambar);}
+  #dano{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0;transition:opacity .35s;
+    background:radial-gradient(ellipse at center,transparent 35%,rgba(190,15,5,.6) 100%);}
+  #alarme{position:absolute;left:50%;top:14px;transform:translateX(-50%);color:var(--verm);font-size:12px;
+    letter-spacing:5px;display:none;animation:pisca .45s infinite;text-shadow:0 0 8px rgba(255,60,40,.8);}
+  @keyframes pisca{50%{opacity:.1;}}
+  /* título + seletor de fase */
+  #titulo{background:linear-gradient(180deg,#020409 0%,#071018 55%,#0a1a14 100%);z-index:20;}
+  #titulo h1{color:#f0f4ff;font-size:48px;letter-spacing:10px;text-shadow:0 0 24px rgba(166,226,46,.5),3px 3px 0 #000;}
+  #titulo h2{color:var(--verde);font-size:14px;letter-spacing:9px;margin:6px 0 26px;}
+  #fases{display:flex;gap:22px;margin-bottom:22px;}
+  .fase{width:265px;border:2px solid #1c2a32;background:rgba(3,8,12,.8);padding:16px 18px;cursor:pointer;
+    transition:border-color .15s, box-shadow .15s;}
+  .fase:hover{border-color:#3a5a48;}
+  .fase.sel{border-color:var(--verde);box-shadow:0 0 22px rgba(166,226,46,.25);}
+  .fase .num{color:#48606e;font-size:10px;letter-spacing:4px;}
+  .fase h3{color:#e8eef6;font-size:17px;letter-spacing:2px;margin:5px 0 8px;}
+  .fase p{color:#7b93a3;font-size:11px;line-height:1.7;}
+  .fase .tag{display:inline-block;margin-top:9px;font-size:9.5px;letter-spacing:2px;padding:2px 8px;border:1px solid #2a3a44;color:#9ab;}
+  .briefing{max-width:574px;color:#9fb4c4;font-size:12px;line-height:1.85;
+    background:rgba(2,6,10,.75);border:1px solid #1a2a30;border-left:3px solid var(--verde);
+    padding:13px 20px;margin-bottom:16px;min-height:88px;}
+  .briefing b{color:var(--ambar);}
+  .controles{color:#5a7282;font-size:11px;line-height:1.9;text-align:center;letter-spacing:1px;}
+  .controles b{color:#cde;}
+  #iniciar{margin-top:18px;background:#08160c;border:2px solid var(--verde);color:var(--verde);
+    font-family:inherit;font-size:14px;letter-spacing:4px;padding:11px 38px;cursor:pointer;}
+  #iniciar:hover{background:var(--verde);color:#021;}
+  /* relógio */
+  #relogio{background:rgba(0,3,2,.92);z-index:15;display:none;cursor:pointer;}
+  .mostrador{width:460px;border:2px solid #2d4;border-radius:16px;background:#031208;padding:26px 32px;
+    box-shadow:0 0 50px rgba(60,220,90,.2), inset 0 0 40px #000;}
+  .mostrador h3{color:var(--verde);letter-spacing:4px;font-size:14px;border-bottom:1px solid #143;
+    padding-bottom:9px;margin-bottom:13px;}
+  .mostrador p,.mostrador li{color:#8fb89d;font-size:12.5px;line-height:2;list-style:none;}
+  .mostrador .ok{color:var(--verde);} .mostrador .pend{color:var(--ambar);}
+  .mostrador .dica{margin-top:15px;color:#3e5a48;font-size:10.5px;letter-spacing:1px;}
+  /* fim */
+  #fim{background:rgba(0,0,0,.9);z-index:25;display:none;text-align:center;}
+  #fim h1{font-size:44px;letter-spacing:6px;text-shadow:3px 3px 0 #000;}
+  #fim.vitoria h1{color:var(--verde);text-shadow:0 0 30px rgba(166,226,46,.5),3px 3px 0 #000;}
+  #fim.derrota h1{color:var(--verm);}
+  #fimStats{margin:24px 0;color:#bcd;font-size:14px;line-height:2.2;letter-spacing:1px;max-width:560px;}
+  #fim button{pointer-events:auto;background:#08160c;border:2px solid var(--verde);color:var(--verde);
+    font-family:inherit;font-size:14px;letter-spacing:4px;padding:11px 34px;cursor:pointer;}
+  #fim button:hover{background:var(--verde);color:#021;}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="vinheta"></div>
+
+<div id="hud">
+  <div id="alarme">⚠ ALARME — BASE EM ALERTA ⚠</div>
+  <div id="cross"></div><div id="crossAnel"></div>
+  <div id="objs"></div>
+  <div id="msg"></div>
+  <div id="prompt"></div>
+  <div id="prog"><div id="progFill"></div></div>
+  <div id="vida">
+    <div class="barraRot">SAÚDE</div><div class="barra"><div id="vidaFill"></div></div>
+    <div class="barraRot">COLETE</div><div class="barra"><div id="colFill"></div></div>
+  </div>
+  <div id="municao"><span id="munNum">7 | 35</span><small id="munNome">PX-7 SILENCIADA</small></div>
+</div>
+<div id="dano"></div>
+
+<div id="titulo" class="overlay">
+  <h1>MI-X</h1>
+  <h2>OPERAÇÃO ECLIPSE — SELECIONE A MISSÃO</h2>
+  <div id="fases">
+    <div class="fase sel" data-fase="1">
+      <div class="num">MISSÃO 01</div>
+      <h3>COMPLEXO VEKTRA</h3>
+      <p>Infiltração noturna na base industrial. Hackeie o terminal, plante o explosivo no gerador e fuja pela extração no pátio.</p>
+      <span class="tag">NOTURNA · CURTA</span>
+    </div>
+    <div class="fase" data-fase="2">
+      <div class="num">MISSÃO 02</div>
+      <h3>REPRESA KRAVA</h3>
+      <p>Instalação militar nas montanhas. Atravesse o checkpoint, sabote os transformadores, roube os planos e alcance a borda da represa.</p>
+      <span class="tag">DIURNA · LONGA</span>
+    </div>
+  </div>
+  <div class="briefing" id="briefing"></div>
+  <div class="controles">
+    <b>WASD</b> mover · <b>MOUSE</b> mirar · <b>CLIQUE</b> atirar (segurar p/ fuzil) · <b>R</b> recarregar · <b>1/2</b> trocar arma<br>
+    <b>E</b> (segurar) interagir · <b>TAB/ESC</b> relógio de missão · <b>M</b> música
+  </div>
+  <button id="iniciar">▸ INICIAR MISSÃO ◂</button>
+</div>
+
+<div id="relogio" class="overlay">
+  <div class="mostrador">
+    <h3>◷ RELÓGIO MI-X — MISSÃO PAUSADA</h3>
+    <p style="color:#cde"><b id="relNome"></b></p>
+    <ul id="relObjs" style="margin:10px 0;"></ul>
+    <p id="relStats"></p>
+    <p class="dica">CLIQUE PARA RETOMAR A MISSÃO</p>
+  </div>
+</div>
+
+<div id="fim" class="overlay">
+  <h1 id="fimTitulo"></h1>
+  <div id="fimStats"></div>
+  <button onclick="location.reload()">VOLTAR À SELEÇÃO</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =====================================================================
+   MI-X: OPERAÇÃO ECLIPSE — V3
+   Engine compartilhada · 2 fases selecionáveis · 2 armas · 4 tipos de
+   inimigo · iluminação por fase (noite/nublado) · estética N64
+   ===================================================================== */
+
+// ============================ RENDER ============================
+const canvas = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:false});
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+const RES = 2;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(74, innerWidth/innerHeight, 0.05, 600);
+function ajustar(){
+  renderer.setSize(Math.floor(innerWidth/RES), Math.floor(innerHeight/RES), false);
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+}
+addEventListener('resize', ajustar);
+
+// ============================ TEXTURAS ============================
+function T(s, fn){
+  const c=document.createElement('canvas'); c.width=c.height=s;
+  fn(c.getContext('2d'), s);
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  return t;
+}
+function ruido(ctx,s,base,varr,n,tinta){
+  for(let i=0;i<n;i++){ const v=base+(Math.random()*2-1)*varr;
+    ctx.fillStyle=tinta?tinta(v):`rgb(${v|0},${v|0},${v*1.04|0})`;
+    ctx.fillRect(Math.random()*s|0,Math.random()*s|0,2,2); }
+}
+function manchas(ctx,s,n,cor,rmax){
+  for(let i=0;i<n;i++){ const x=Math.random()*s,y=Math.random()*s,r=4+Math.random()*rmax;
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,cor); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); }
+}
+const texConcreto=T(128,(ctx,s)=>{ ctx.fillStyle='#787e88'; ctx.fillRect(0,0,s,s);
+  ruido(ctx,s,118,16,2200); manchas(ctx,s,10,'rgba(25,28,34,0.22)',22);
+  for(let y=0;y<s;y+=43){ ctx.fillStyle='#565b64'; ctx.fillRect(0,y,s,2);
+    for(let x=8;x<s;x+=24){ ctx.fillStyle='#474b53'; ctx.fillRect(x,y+5,3,3);} }
+  manchas(ctx,s,4,'rgba(60,50,30,0.18)',30); });
+const texDam=T(128,(ctx,s)=>{ ctx.fillStyle='#8b9099'; ctx.fillRect(0,0,s,s);
+  ruido(ctx,s,135,14,1800);
+  for(let x=0;x<s;x+=32){ ctx.fillStyle='#6c717a'; ctx.fillRect(x,0,2,s); }
+  // escorrimentos verticais (manchas de água)
+  for(let i=0;i<7;i++){ const x=Math.random()*s, w=3+Math.random()*8;
+    const g=ctx.createLinearGradient(0,0,0,s);
+    g.addColorStop(0,'rgba(30,35,40,0.35)'); g.addColorStop(1,'rgba(30,35,40,0.02)');
+    ctx.fillStyle=g; ctx.fillRect(x,0,w,s); } });
+const texMetal=T(128,(ctx,s)=>{ ctx.fillStyle='#4c545f'; ctx.fillRect(0,0,s,s);
+  for(let x=0;x<s;x+=16){ const g=ctx.createLinearGradient(x,0,x+16,0);
+    g.addColorStop(0,'#3a414a'); g.addColorStop(0.5,'#5c6570'); g.addColorStop(1,'#3a414a');
+    ctx.fillStyle=g; ctx.fillRect(x,0,16,s); }
+  ruido(ctx,s,80,12,700);
+  ctx.fillStyle='#2e333b'; for(let y=10;y<s;y+=36) for(let x=6;x<s;x+=16) ctx.fillRect(x,y,3,3);
+  manchas(ctx,s,6,'rgba(90,60,30,0.2)',16); });
+const texContainer=T(128,(ctx,s)=>{ ctx.fillStyle='#666'; ctx.fillRect(0,0,s,s);
+  for(let x=0;x<s;x+=12){ const g=ctx.createLinearGradient(x,0,x+12,0);
+    g.addColorStop(0,'rgba(0,0,0,0.32)'); g.addColorStop(0.5,'rgba(255,255,255,0.12)'); g.addColorStop(1,'rgba(0,0,0,0.32)');
+    ctx.fillStyle=g; ctx.fillRect(x,0,12,s); }
+  manchas(ctx,s,8,'rgba(60,30,15,0.3)',16);
+  ctx.font='bold 13px monospace'; ctx.fillStyle='rgba(235,235,225,0.55)'; ctx.fillText('KRV-LOG',8,20); });
+const texPiso=T(128,(ctx,s)=>{ ctx.fillStyle='#2c3036'; ctx.fillRect(0,0,s,s);
+  for(let y=0;y<s;y+=32) for(let x=0;x<s;x+=32){ const v=44+Math.random()*14;
+    ctx.fillStyle=`rgb(${v|0},${v+3|0},${v+8|0})`; ctx.fillRect(x+1,y+1,30,30); }
+  ruido(ctx,s,52,10,1400); manchas(ctx,s,12,'rgba(8,10,12,0.3)',18); });
+const texAsfalto=T(128,(ctx,s)=>{ ctx.fillStyle='#33342f'; ctx.fillRect(0,0,s,s);
+  ruido(ctx,s,52,16,2600,v=>`rgb(${v+4|0},${v+2|0},${v-4|0})`);
+  ctx.strokeStyle='rgba(15,16,14,0.5)'; ctx.lineWidth=1.5;
+  for(let i=0;i<5;i++){ ctx.beginPath(); let x=Math.random()*s,y=Math.random()*s; ctx.moveTo(x,y);
+    for(let j=0;j<4;j++){ x+=(Math.random()-0.5)*40; y+=(Math.random()-0.5)*40; ctx.lineTo(x,y);} ctx.stroke(); }
+  manchas(ctx,s,8,'rgba(10,10,8,0.3)',26); });
+const texEstrada=T(128,(ctx,s)=>{ ctx.fillStyle='#3a3b36'; ctx.fillRect(0,0,s,s);
+  ruido(ctx,s,58,14,2200,v=>`rgb(${v+4|0},${v+2|0},${v-3|0})`);
+  ctx.fillStyle='rgba(190,170,60,0.7)';
+  for(let y=0;y<s;y+=32) ctx.fillRect(s/2-2,y,4,16);
+  ctx.fillStyle='rgba(200,200,195,0.4)'; ctx.fillRect(3,0,3,s); ctx.fillRect(s-6,0,3,s);
+  manchas(ctx,s,6,'rgba(10,10,8,0.3)',22); });
+const texTerra=T(128,(ctx,s)=>{ ctx.fillStyle='#56584c'; ctx.fillRect(0,0,s,s);
+  ruido(ctx,s,86,20,2800,v=>`rgb(${v*0.92|0},${v|0},${v*0.78|0})`);
+  manchas(ctx,s,12,'rgba(35,38,28,0.35)',22); manchas(ctx,s,6,'rgba(110,112,96,0.25)',16); });
+const texRocha=T(128,(ctx,s)=>{ ctx.fillStyle='#5e6066'; ctx.fillRect(0,0,s,s);
+  ruido(ctx,s,92,22,2400);
+  ctx.strokeStyle='rgba(20,22,26,0.4)'; ctx.lineWidth=2;
+  for(let i=0;i<8;i++){ ctx.beginPath(); let x=Math.random()*s,y=Math.random()*s; ctx.moveTo(x,y);
+    for(let j=0;j<3;j++){ x+=(Math.random()-0.5)*50; y+=(Math.random()-0.5)*50; ctx.lineTo(x,y);} ctx.stroke(); }
+  manchas(ctx,s,8,'rgba(120,124,130,0.25)',18); });
+const texCaixa=T(128,(ctx,s)=>{ for(let y=0;y<s;y+=26){
+    const g=ctx.createLinearGradient(0,y,0,y+26);
+    g.addColorStop(0,'#8a6f42'); g.addColorStop(0.5,'#75592f'); g.addColorStop(1,'#5e4623');
+    ctx.fillStyle=g; ctx.fillRect(0,y,s,25); }
+  ruido(ctx,s,100,20,900,v=>`rgba(${v|0},${v*0.78|0},${v*0.45|0},0.6)`);
+  ctx.strokeStyle='#3d2e14'; ctx.lineWidth=6; ctx.strokeRect(3,3,s-6,s-6);
+  ctx.font='bold 19px monospace'; ctx.fillStyle='rgba(110,30,22,0.9)'; ctx.fillText('VEKTRA',22,74);
+  ctx.font='10px monospace'; ctx.fillStyle='rgba(40,28,12,0.9)'; ctx.fillText('IND-0047',38,92); });
+const texHazard=T(64,(ctx,s)=>{ ctx.fillStyle='#c9a22a'; ctx.fillRect(0,0,s,s);
+  ctx.fillStyle='#16161a';
+  for(let i=-s;i<s*2;i+=24){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+12,0);
+    ctx.lineTo(i+12-s,s); ctx.lineTo(i-s,s); ctx.fill(); } });
+const texRack=T(64,(ctx,s)=>{ ctx.fillStyle='#15171c'; ctx.fillRect(0,0,s,s);
+  for(let y=4;y<s;y+=9){ ctx.fillStyle='#22252c'; ctx.fillRect(4,y,s-8,6);
+    for(let x=8;x<s-8;x+=7){ ctx.fillStyle=Math.random()<0.5?'#39e07a':(Math.random()<0.5?'#e0a039':'#2a2e36');
+      ctx.fillRect(x,y+2,2,2);} } });
+const texTela=T(64,(ctx,s)=>{ ctx.fillStyle='#03140a'; ctx.fillRect(0,0,s,s);
+  ctx.fillStyle='#34d877';
+  for(let y=8;y<s-6;y+=8){ let x=6; while(x<s-8){ const w=4+Math.random()*12;
+    if(Math.random()<0.8) ctx.fillRect(x,y,w,3); x+=w+4; } } });
+const texTelaCRT=T(64,(ctx,s)=>{ ctx.fillStyle='#0a1018'; ctx.fillRect(0,0,s,s);
+  ctx.fillStyle='#4a90c8';
+  for(let y=6;y<s-6;y+=7){ let x=5; while(x<s-8){ const w=3+Math.random()*10;
+    if(Math.random()<0.75) ctx.fillRect(x,y,w,2); x+=w+4; } }
+  ctx.fillStyle='rgba(120,200,255,0.18)'; ctx.fillRect(0,0,s,3); });
+const texCerca=T(64,(ctx,s)=>{ ctx.clearRect(0,0,s,s);
+  ctx.strokeStyle='rgba(150,158,168,0.95)'; ctx.lineWidth=2;
+  for(let i=-s;i<s*2;i+=10){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+s,s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(i+s,0); ctx.lineTo(i,s); ctx.stroke(); } });
+const texAgua=T(128,(ctx,s)=>{ ctx.fillStyle='#1d3a48'; ctx.fillRect(0,0,s,s);
+  for(let i=0;i<46;i++){ ctx.fillStyle=`rgba(${90+Math.random()*60|0},${150+Math.random()*60|0},${170+Math.random()*50|0},0.25)`;
+    ctx.fillRect(Math.random()*s|0,Math.random()*s|0,8+Math.random()*26,2); } });
+const texCeuNoite=T(512,(ctx,s)=>{ const g=ctx.createLinearGradient(0,0,0,s);
+  g.addColorStop(0,'#02030a'); g.addColorStop(0.55,'#071224'); g.addColorStop(1,'#0a1a22');
+  ctx.fillStyle=g; ctx.fillRect(0,0,s,s);
+  for(let i=0;i<260;i++){ const b=Math.random();
+    ctx.fillStyle=`rgba(255,255,${230+Math.random()*25|0},${0.25+b*0.6})`;
+    ctx.fillRect(Math.random()*s|0,Math.random()*s*0.7|0,b>0.92?2:1,b>0.92?2:1); } });
+const texCeuNublado=T(512,(ctx,s)=>{ const g=ctx.createLinearGradient(0,0,0,s);
+  g.addColorStop(0,'#7d8894'); g.addColorStop(0.55,'#99a3ac'); g.addColorStop(1,'#aab2b8');
+  ctx.fillStyle=g; ctx.fillRect(0,0,s,s);
+  for(let i=0;i<70;i++){ const x=Math.random()*s,y=Math.random()*s*0.7,r=20+Math.random()*60;
+    const cl=ctx.createRadialGradient(x,y,0,x,y,r);
+    const tom=Math.random()<0.5? '255,255,255':'90,98,108';
+    cl.addColorStop(0,`rgba(${tom},0.13)`); cl.addColorStop(1,`rgba(${tom},0)`);
+    ctx.fillStyle=cl; ctx.beginPath(); ctx.ellipse(x,y,r*1.7,r*0.6,0,0,7); ctx.fill(); } });
+const texBlob=T(64,(ctx,s)=>{ const g=ctx.createRadialGradient(32,32,2,32,32,30);
+  g.addColorStop(0,'rgba(0,0,0,0.5)'); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,s,s); });
+const texCone=T(64,(ctx,s)=>{ const g=ctx.createLinearGradient(0,0,0,s);
+  g.addColorStop(0,'rgba(255,240,200,0.55)'); g.addColorStop(1,'rgba(255,240,200,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,s,s); });
+function texPlaca(txt,cor,fundo){
+  return T(256,(ctx,s)=>{ ctx.fillStyle=fundo||'#10141a'; ctx.fillRect(0,0,s,64);
+    ctx.strokeStyle='#2a323c'; ctx.lineWidth=4; ctx.strokeRect(2,2,s-4,60);
+    ctx.font='bold 26px monospace'; ctx.fillStyle=cor||'#cfe2ff'; ctx.textAlign='center';
+    ctx.fillText(txt,s/2,42); });
+}
+function mat(tex,rx,ry,cor){
+  const t=tex.clone(); t.needsUpdate=true; t.repeat.set(rx,ry);
+  return new THREE.MeshLambertMaterial({map:t,color:cor||0xffffff});
+}
+const matMetalEsc=new THREE.MeshLambertMaterial({color:0x23272e});
+
+// ============================ MUNDO ============================
+const colisores=[], paredesMesh=[];
+function removerColisor(pred){ const i=colisores.findIndex(pred); if(i>=0) colisores.splice(i,1); }
+function bloco(x,z,w,d,h,material,o){
+  o=o||{};
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+  m.position.set(x,(o.y||0)+h/2,z);
+  m.castShadow=o.sombra!==false; m.receiveShadow=true;
+  scene.add(m);
+  if(o.colide!==false){
+    colisores.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2});
+    if(o.visao!==false) paredesMesh.push(m);
+  }
+  return m;
+}
+function parede(x,z,w,d,h,tex){ h=h||5;
+  return bloco(x,z,w,d,h, mat(tex||texConcreto, Math.max(w,d)/3.4, h/3)); }
+function caixa(x,z,s,rot){ const c=bloco(x,z,s,s,s,mat(texCaixa,1,1)); if(rot)c.rotation.y=rot; blob(x,z,s*1.1); return c; }
+function blob(x,z,r){
+  const p=new THREE.Mesh(new THREE.PlaneGeometry(r*2,r*2),
+    new THREE.MeshBasicMaterial({map:texBlob,transparent:true,depthWrite:false}));
+  p.rotation.x=-Math.PI/2; p.position.set(x,0.025,z); scene.add(p);
+}
+function tubo(x1,z1,x2,z2,y,r,cor){
+  const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz);
+  const t=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,7),
+    new THREE.MeshLambertMaterial({color:cor||0x565e52}));
+  t.position.set((x1+x2)/2,y,(z1+z2)/2);
+  t.rotation.z=Math.PI/2; t.rotation.y=-Math.atan2(dz,dx);
+  scene.add(t); return t;
+}
+function porta(cx,cz,eixoX,alt){ alt=alt||3.6;
+  const w=eixoX?4.4:1.2, d=eixoX?1.2:4.4;
+  bloco(cx,cz,w,d,1.4,matMetalEsc,{y:alt,colide:false});
+  if(eixoX){ bloco(cx-2.05,cz,0.35,1.15,alt,matMetalEsc); bloco(cx+2.05,cz,0.35,1.15,alt,matMetalEsc); }
+  else{ bloco(cx,cz-2.05,1.15,0.35,alt,matMetalEsc); bloco(cx,cz+2.05,1.15,0.35,alt,matMetalEsc); }
+}
+function coneLuz(sx,sy,sz,tx,ty,tz,rTop,rBot,op){
+  const a=new THREE.Vector3(sx,sy,sz), b=new THREE.Vector3(tx,ty,tz);
+  const dir=b.clone().sub(a), len=dir.length(); dir.normalize();
+  const cone=new THREE.Mesh(new THREE.CylinderGeometry(rTop,rBot,len,16,1,true),
+    new THREE.MeshBasicMaterial({map:texCone,transparent:true,opacity:op||0.15,
+      blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
+  cone.position.copy(a).add(dir.clone().multiplyScalar(len/2));
+  cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().negate());
+  scene.add(cone); return cone;
+}
+function poste(x,z,cor){
+  const p=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.14,5,7),matMetalEsc);
+  p.position.set(x,2.5,z); p.castShadow=true; scene.add(p);
+  const cab=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.25,0.6),
+    new THREE.MeshBasicMaterial({color:cor||0xffeec2}));
+  cab.position.set(x,5,z); scene.add(cab);
+  const l=new THREE.PointLight(cor||0xffdf9e,0.85,17); l.position.set(x,4.6,z); scene.add(l);
+  coneLuz(x,4.8,z,x,0,z,0.3,2.6,0.12);
+  colisores.push({minX:x-0.15,maxX:x+0.15,minZ:z-0.15,maxZ:z+0.15});
+}
+function luzInterna(x,z,cor,intens,alc,alt){
+  const lum=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.12,0.5),
+    new THREE.MeshBasicMaterial({color:cor}));
+  lum.position.set(x,(alt||5)-0.15,z); scene.add(lum);
+  const l=new THREE.PointLight(cor,intens,alc); l.position.set(x,(alt||5)-0.7,z); scene.add(l);
+}
+function rocha(x,z,r,alt){
+  const g=new THREE.DodecahedronGeometry(r).toNonIndexed();
+  g.computeVertexNormals();
+  const m=new THREE.Mesh(g, mat(texRocha,1.6,1.6));
+  m.position.set(x,(alt!==undefined?alt:r*0.45),z);
+  m.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);
+  m.scale.y=0.65+Math.random()*0.4;
+  m.castShadow=false; m.receiveShadow=true; scene.add(m);
+  colisores.push({minX:x-r*0.8,maxX:x+r*0.8,minZ:z-r*0.8,maxZ:z+r*0.8});
+  paredesMesh.push(m);
+  return m;
+}
+function arvore(x,z,esc){
+  esc=esc||1;
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.14*esc,0.2*esc,1.6*esc,6),
+    new THREE.MeshLambertMaterial({color:0x4a3a26}));
+  tr.position.set(x,0.8*esc,z); tr.castShadow=true; scene.add(tr);
+  for(let i=0;i<3;i++){
+    const c=new THREE.Mesh(new THREE.ConeGeometry((1.5-i*0.36)*esc,1.5*esc,7),
+      new THREE.MeshLambertMaterial({color:[0x2a4630,0x2f5036,0x35573a][i]}));
+    c.position.set(x,(1.7+i*0.95)*esc,z); c.castShadow=true; scene.add(c);
+  }
+  blob(x,z,1.3*esc);
+  colisores.push({minX:x-0.25,maxX:x+0.25,minZ:z-0.25,maxZ:z+0.25});
+}
+function cerca(x1,z1,x2,z2,alt){
+  alt=alt||2.4;
+  const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.ceil(len/4);
+  for(let i=0;i<=n;i++){
+    const px=x1+dx*i/n, pz=z1+dz*i/n;
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,alt,5),matMetalEsc);
+    p.position.set(px,alt/2,pz); scene.add(p);
+  }
+  const tela=new THREE.Mesh(new THREE.PlaneGeometry(len,alt),
+    new THREE.MeshLambertMaterial({map:(()=>{const t=texCerca.clone();t.needsUpdate=true;t.repeat.set(len/2,alt/2);return t;})(),
+      transparent:true,alphaTest:0.3,side:THREE.DoubleSide}));
+  tela.position.set((x1+x2)/2,alt/2,(z1+z2)/2);
+  tela.rotation.y=-Math.atan2(dz,dx);
+  scene.add(tela);
+  // colide mas não bloqueia visão nem balas
+  const m=0.15;
+  colisores.push({minX:Math.min(x1,x2)-m,maxX:Math.max(x1,x2)+m,
+                  minZ:Math.min(z1,z2)-m,maxZ:Math.max(z1,z2)+m});
+}
+function container(x,z,cor,rot){
+  const c=bloco(x,z,6,2.5,2.6, mat(texContainer,3,1,cor));
+  if(rot){ c.rotation.y=rot; }
+  blob(x,z,3.4);
+  return c;
+}
+function torreVigia(x,z,alturaPlat){
+  const h=alturaPlat||5.4;
+  for(const [lx,lz] of [[-1.2,-1.2],[1.2,-1.2],[-1.2,1.2],[1.2,1.2]]){
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.16,h,7),matMetalEsc);
+    p.position.set(x+lx,h/2,z+lz); p.castShadow=true; scene.add(p);
+  }
+  const plat=bloco(x,z,3.6,3.6,0.25, mat(texMetal,3,3), {y:h, colide:false});
+  bloco(x,z,3.8,3.8,0.2, matMetalEsc, {y:h+2.6, colide:false});
+  for(const [lx,lz] of [[-1.8,-1.8],[1.8,-1.8],[-1.8,1.8],[1.8,1.8]]){
+    const p=new THREE.Mesh(new THREE.BoxGeometry(0.1,2.6,0.1),matMetalEsc);
+    p.position.set(x+lx,h+1.4,z+lz); scene.add(p);
+  }
+  // escada lateral
+  for(let i=0;i<Math.floor(h/0.5);i++){
+    const d=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.05,0.12),matMetalEsc);
+    d.position.set(x,0.3+i*0.5,z+1.9); scene.add(d);
+  }
+  colisores.push({minX:x-1.4,maxX:x+1.4,minZ:z-1.4,maxZ:z+1.4});
+  paredesMesh.push(plat);
+  blob(x,z,2.4);
+  return {x,z,h};
+}
+
+// ============================ ÁUDIO ============================
+let actx=null, alarmeTimer=null, musicaOn=true, musTimer=null, musPasso=0, ventoTimer=null;
+function audio(){ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); return actx; }
+function noiseBurst(dur,freq,vol,q){
+  const a=audio(),t=a.currentTime;
+  const buf=a.createBuffer(1,a.sampleRate*dur,a.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,q||3);
+  const s=a.createBufferSource(); s.buffer=buf;
+  const f=a.createBiquadFilter(); f.type='lowpass'; f.frequency.value=freq;
+  const g=a.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.008,t+dur);
+  s.connect(f).connect(g).connect(a.destination); s.start();
+}
+const tiroSilenciado=()=>noiseBurst(0.09,850,0.5);
+const tiroFuzilSom=()=>{ noiseBurst(0.1,5200,0.4,2); noiseBurst(0.16,700,0.22,2); };
+const tiroInimigo=()=>noiseBurst(0.14,4500,0.32,2);
+const passo=alt=>noiseBurst(0.05,alt?420:330,0.06,4);
+function bip(freq,dur,vol,tipo){
+  const a=audio(),t=a.currentTime;
+  const o=a.createOscillator(); o.type=tipo||'square'; o.frequency.value=freq;
+  const g=a.createGain(); g.gain.setValueAtTime(vol||0.1,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.connect(g).connect(a.destination); o.start(); o.stop(t+dur);
+}
+function notaBaixo(freq,dur,vol){
+  const a=audio(),t=a.currentTime;
+  const o=a.createOscillator(); o.type='sawtooth'; o.frequency.value=freq;
+  const f=a.createBiquadFilter(); f.type='lowpass'; f.frequency.value=320; f.Q.value=4;
+  const g=a.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.002,t+dur);
+  o.connect(f).connect(g).connect(a.destination); o.start(); o.stop(t+dur);
+}
+function explosaoSom(){ noiseBurst(1.3,1800,0.75,1.4); setTimeout(()=>noiseBurst(0.9,300,0.5,1.2),90); }
+function setAlarme(on){
+  const el=document.getElementById('alarme');
+  if(on&&!alarmeTimer){ el.style.display='block'; let alto=false;
+    alarmeTimer=setInterval(()=>{ bip(alto?870:610,0.32,0.045,'sawtooth'); alto=!alto; },400);
+  } else if(!on&&alarmeTimer){ clearInterval(alarmeTimer); alarmeTimer=null; el.style.display='none'; }
+}
+const E2=82.4,G2=98,D2=73.4,A2=110,B2=123.5;
+const padraoCalmo=[E2,0,0,0,0,0,G2,0,E2,0,0,0,D2,0,0,0];
+const padraoAlerta=[E2,E2,0,E2,G2,0,E2,0,A2,0,A2,G2,E2,0,B2,0];
+function iniciarMusica(){
+  if(musTimer) return;
+  musTimer=setInterval(()=>{
+    if(!musicaOn||pausado||fim) return;
+    const alerta=inimigos.some(e=>e.estado==='alerta');
+    const pad=alerta?padraoAlerta:padraoCalmo;
+    const n=pad[musPasso%16];
+    if(n) notaBaixo(n,0.32,alerta?0.12:0.08);
+    if(alerta&&musPasso%2===0) noiseBurst(0.03,7000,0.025,5);
+    if(!alerta&&musPasso%16===8) bip(660,0.5,0.011,'sine');
+    musPasso++;
+  },250);
+}
+function iniciarVento(){
+  if(ventoTimer) return;
+  ventoTimer=setInterval(()=>{
+    if(pausado||fim) return;
+    noiseBurst(1.6,300+Math.random()*200,0.028+Math.random()*0.02,1.1);
+  },1400);
+}
+
+// ============================ ARMAS ============================
+const ARSENAL={
+  pistola:{nome:'PX-7 SILENCIADA',dano:34,mag:7,cd:0.21,auto:false,ruido:8,
+    som:tiroSilenciado,flash:2.2},
+  fuzil:{nome:'RV-9 FUZIL',dano:24,mag:30,cd:0.105,auto:true,ruido:30,
+    som:tiroFuzilSom,flash:3.2},
+};
+const inventario={pistola:{tem:true,mun:7,res:35}, fuzil:{tem:false,mun:0,res:0}};
+let armaAtual='pistola';
+
+function viewmodelPistola(){
+  const g=new THREE.Group();
+  const M=c=>new THREE.MeshLambertMaterial({color:c});
+  const slide=new THREE.Mesh(new THREE.BoxGeometry(0.066,0.062,0.27),M(0x2a2f38)); slide.position.set(0,0.052,-0.06);
+  const frame=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.055,0.26),M(0x383f4a)); frame.position.set(0,0,-0.05);
+  const sup=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.21,10),M(0x14171c));
+  sup.rotation.x=Math.PI/2; sup.position.set(0,0.052,-0.3);
+  const alca=new THREE.Mesh(new THREE.BoxGeometry(0.014,0.022,0.02),M(0x191d24)); alca.position.set(0,0.095,0.05);
+  const cabo=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.15,0.08),M(0x2e2620)); cabo.position.set(0,-0.09,0.07); cabo.rotation.x=0.28;
+  const maoD=new THREE.Mesh(new THREE.BoxGeometry(0.085,0.1,0.11),M(0xc59a76)); maoD.position.set(0,-0.1,0.075); maoD.rotation.x=0.28;
+  const luva=new THREE.Mesh(new THREE.BoxGeometry(0.095,0.07,0.12),M(0x23282f)); luva.position.set(0,-0.16,0.1); luva.rotation.x=0.3;
+  const maoE=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.08,0.1),M(0xc59a76)); maoE.position.set(-0.018,-0.05,-0.12); maoE.rotation.z=0.25;
+  g.add(slide,frame,sup,alca,cabo,maoD,luva,maoE);
+  g.userData.slide=slide;
+  return g;
+}
+function viewmodelFuzil(){
+  const g=new THREE.Group();
+  const M=c=>new THREE.MeshLambertMaterial({color:c});
+  const corpo=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.09,0.5),M(0x2c3036)); corpo.position.set(0,0.02,-0.12);
+  const cano=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,0.3,8),M(0x14171c));
+  cano.rotation.x=Math.PI/2; cano.position.set(0,0.045,-0.5);
+  const guarda=new THREE.Mesh(new THREE.BoxGeometry(0.062,0.07,0.22),M(0x4a3a28)); guarda.position.set(0,0.02,-0.35);
+  const coronha=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.11,0.2),M(0x4a3a28)); coronha.position.set(0,-0.02,0.2); coronha.rotation.x=-0.12;
+  const pente=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.2,0.09),M(0x202830)); pente.position.set(0,-0.12,-0.1); pente.rotation.x=0.5;
+  const cabo2=new THREE.Mesh(new THREE.BoxGeometry(0.055,0.12,0.07),M(0x2e2620)); cabo2.position.set(0,-0.08,0.04); cabo2.rotation.x=0.3;
+  const mira=new THREE.Mesh(new THREE.BoxGeometry(0.014,0.03,0.02),M(0x191d24)); mira.position.set(0,0.085,-0.42);
+  const maoD=new THREE.Mesh(new THREE.BoxGeometry(0.085,0.1,0.11),M(0xc59a76)); maoD.position.set(0,-0.09,0.05); maoD.rotation.x=0.28;
+  const maoE=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.085,0.11),M(0xc59a76)); maoE.position.set(-0.012,-0.03,-0.34);
+  g.add(corpo,cano,guarda,coronha,pente,cabo2,mira,maoD,maoE);
+  g.userData.slide=corpo;
+  return g;
+}
+const vmPistola=viewmodelPistola(), vmFuzil=viewmodelFuzil();
+const arma=new THREE.Group(); arma.add(vmPistola,vmFuzil);
+vmFuzil.visible=false;
+arma.position.set(0.21,-0.19,-0.42);
+arma.traverse(o=>o.frustumCulled=false);
+camera.add(arma); scene.add(camera);
+const flash=new THREE.PointLight(0xffc870,0,5);
+flash.position.set(0.2,-0.08,-0.7); camera.add(flash);
+
+function trocarArma(nome){
+  if(!inventario[nome].tem||armaAtual===nome||jogador.recarregando>0) return;
+  armaAtual=nome;
+  vmPistola.visible=nome==='pistola'; vmFuzil.visible=nome==='fuzil';
+  bip(520,0.05,0.07); bip(760,0.05,0.07);
+  atualizarMunHUD();
+}
+function atualizarMunHUD(){
+  const inv=inventario[armaAtual];
+  document.getElementById('munNum').textContent=`${inv.mun} | ${inv.res}`;
+  document.getElementById('munNome').textContent=ARSENAL[armaAtual].nome;
+}
+
+// ============================ JOGADOR ============================
+const jogador={
+  pos:new THREE.Vector3(0,1.62,30), yaw:Math.PI, pitch:0,
+  vida:100, col:0, raio:0.42,
+  recarregando:0, cooldown:0, recuo:0, swayX:0, swayY:0, passoFase:0, passoAlt:false,
+};
+const teclas={};
+let pausado=true, fim=false, comecou=false, mouseSegurado=false;
+let tInicio=0, tiros=0, acertos=0, abates=0, relogioJogo=0;
+const ultimoTiro={t:-99,pos:new THREE.Vector3(),ruido:8};
+
+// ============================ INIMIGOS ============================
+const TIPOS={
+  comum :{jaq:0x3e4654,vest:0x262b33,calca:0x30343b,capa:0x1e2126,hp:60, dmin:8,dmax:14,imin:0.9,imax:1.6,alc:32,visao:17,vel:3.2},
+  campo :{jaq:0x49523f,vest:0x2c3128,calca:0x3a4034,capa:0x262a22,hp:60, dmin:8,dmax:14,imin:0.9,imax:1.6,alc:32,visao:19,vel:3.2},
+  oficial:{jaq:0x33383f,vest:0x22262b,calca:0x2a2e34,capa:0x14161a,hp:85, dmin:10,dmax:16,imin:0.7,imax:1.1,alc:34,visao:22,vel:3.6},
+  sniper:{jaq:0x3d4a3a,vest:0x28301f,calca:0x333a2c,capa:0x20261c,hp:50, dmin:24,dmax:34,imin:2.0,imax:2.8,alc:60,visao:50,vel:0},
+  elite :{jaq:0x1c1f24,vest:0x0e1013,calca:0x16181c,capa:0x0a0b0d,hp:120,dmin:11,dmax:17,imin:0.55,imax:0.9,alc:36,visao:24,vel:4.0},
+};
+const inimigos=[], todasPartes=[];
+function criarGuarda(wps,o){
+  o=o||{};
+  const tp=TIPOS[o.tipo||'comum'];
+  const g=new THREE.Group();
+  const M=c=>new THREE.MeshLambertMaterial({color:c});
+  function box(w,h,d,c,x,y,z,pai,sombra){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),M(c));
+    m.position.set(x,y,z); m.castShadow=!!sombra; (pai||g).add(m); return m;
+  }
+  const pernaE=new THREE.Group(); pernaE.position.set(-0.14,0.95,0); g.add(pernaE);
+  box(0.21,0.85,0.23,tp.calca,0,-0.43,0,pernaE,true);
+  box(0.23,0.13,0.34,0x16181c,0,-0.9,0.05,pernaE);
+  const pernaD=new THREE.Group(); pernaD.position.set(0.14,0.95,0); g.add(pernaD);
+  box(0.21,0.85,0.23,tp.calca,0,-0.43,0,pernaD,true);
+  box(0.23,0.13,0.34,0x16181c,0,-0.9,0.05,pernaD);
+  box(0.5,0.22,0.3,tp.calca,0,1.02,0);
+  box(0.56,0.6,0.32,tp.jaq,0,1.44,0,null,true);
+  box(0.58,0.4,0.37,tp.vest,0,1.42,0);
+  const bracoE=new THREE.Group(); bracoE.position.set(-0.36,1.66,0); g.add(bracoE);
+  box(0.15,0.58,0.17,tp.jaq,0,-0.28,0,bracoE);
+  box(0.1,0.1,0.1,0xc59a76,0,-0.6,0,bracoE);
+  const bracoD=new THREE.Group(); bracoD.position.set(0.36,1.66,0); g.add(bracoD);
+  box(0.15,0.58,0.17,tp.jaq,0,-0.28,0,bracoD);
+  box(0.1,0.1,0.1,0xc59a76,0,-0.6,0,bracoD);
+  const fuzil=box(0.07,0.1,o.tipo==='sniper'?1.05:0.78,0x101216,-0.06,-0.6,-0.28,bracoD);
+  box(0.05,0.14,0.1,0x101216,-0.06,-0.66,0.02,bracoD);
+  const ponta=new THREE.Object3D(); ponta.position.set(0,0,o.tipo==='sniper'?-0.55:-0.4); fuzil.add(ponta);
+  const cabeca=box(0.26,0.29,0.26,0xc59a76,0,1.95,0); cabeca.name='cabeca';
+  if(o.tipo==='oficial'){ // quepe
+    box(0.3,0.08,0.3,tp.capa,0,2.13,0); box(0.32,0.04,0.36,tp.capa,0,2.09,0.04);
+  } else {
+    box(0.3,0.13,0.3,tp.capa,0,2.12,0); box(0.31,0.07,0.31,tp.capa,0,2.05,0.01);
+  }
+  g.position.set(wps[0].x,o.altura||0,wps[0].y);
+  scene.add(g); if(!o.altura) blob(wps[0].x,wps[0].y,0.7);
+  const e={g,hp:tp.hp,tp,estado:'patrulha',wps,wpi:wps.length>1?1:0,parado:!!o.parado||o.tipo==='sniper',
+    torre:!!o.torre,tTiro:1+Math.random(),fase:Math.random()*6,
+    pernaE,pernaD,bracoE,bracoD,ponta,tQueda:0,ladoQueda:Math.random()<0.5?1:-1,
+    visao:o.visao||tp.visao, losT:0, losVal:false,
+    sniper:o.tipo==='sniper'};
+  g.traverse(m=>{ if(m.isMesh){ m.userData.inimigo=e; todasPartes.push(m); } });
+  inimigos.push(e);
+  return e;
+}
+const V2c=(x,y)=>new THREE.Vector2(x,y);
+
+// drops e pickups
+const drops=[], pickups=[];
+function criarDrop(x,z){
+  const d=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.22,0.28),
+    new THREE.MeshLambertMaterial({color:0x8aa648,emissive:0x1d2410}));
+  d.position.set(x,0.12,z); scene.add(d); drops.push(d);
+}
+function criarPickup(x,z,tipo,mesh,aoColetar){
+  mesh.position.set(x,mesh.position.y||0.6,z);
+  scene.add(mesh);
+  pickups.push({mesh,tipo,aoColetar,pego:false});
+}
+
+// ============================ NÍVEL / OBJETIVOS ============================
+const nivel={nome:'',objetivos:[],interagiveis:[],extracao:null,textoVitoria:'',textoDerrota:''};
+const baliza=new THREE.Mesh(new THREE.CylinderGeometry(1.7,1.7,8,14,1,true),
+  new THREE.MeshBasicMaterial({color:0x55ff77,transparent:true,opacity:0.25,
+    blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+baliza.visible=false; scene.add(baliza);
+
+function objetivoConcluido(id){
+  const o=nivel.objetivos.find(o=>o.id===id);
+  if(o&&!o.feito){ o.feito=true; atualizarObjetivosHUD();
+    if(nivel.objetivos.every(o=>o.feito||o.opcional)){
+      baliza.visible=true; mensagem('VÁ PARA O PONTO DE EXTRAÇÃO!'); } }
+}
+function atualizarObjetivosHUD(){
+  const todos=nivel.objetivos.every(o=>o.feito||o.opcional);
+  let html='<b style="color:#a6e22e;letter-spacing:2px">OBJETIVOS</b><br>';
+  let rel='';
+  for(const o of nivel.objetivos){
+    html+=(o.feito?`<span class="ok">■ ${o.texto}</span>`:`<span class="pend">□ ${o.texto}</span>`)+'<br>';
+    rel+=`<li class="${o.feito?'ok':'pend'}">${o.feito?'■':'□'} ${o.texto}</li>`;
+  }
+  html+=todos?'<span class="pend">□ Alcançar a extração</span>':'<span class="off">▫ Alcançar a extração</span>';
+  rel+='<li class="pend">□ Alcançar o ponto de extração</li>';
+  document.getElementById('objs').innerHTML=html;
+  document.getElementById('relObjs').innerHTML=rel;
+}
+let msgTimer=null;
+function mensagem(txt){
+  const el=document.getElementById('msg'); el.textContent=txt; el.style.opacity=1;
+  clearTimeout(msgTimer); msgTimer=setTimeout(()=>el.style.opacity=0,3400);
+}
+
+// ============================ FÍSICA / VISÃO ============================
+function resolverColisao(pos,raio){
+  for(const c of colisores){
+    const px=Math.max(c.minX,Math.min(pos.x,c.maxX));
+    const pz=Math.max(c.minZ,Math.min(pos.z,c.maxZ));
+    const dx=pos.x-px,dz=pos.z-pz,d2=dx*dx+dz*dz;
+    if(d2<raio*raio){ const d=Math.sqrt(d2)||0.0001;
+      pos.x+=dx/d*(raio-d); pos.z+=dz/d*(raio-d); }
+  }
+}
+const ray=new THREE.Raycaster();
+function temVisao(a,b){
+  const dir=b.clone().sub(a); const dist=dir.length(); dir.normalize();
+  ray.set(a,dir); ray.far=dist-0.4;
+  return ray.intersectObjects(paredesMesh,false).length===0;
+}
+
+// ============================ EFEITOS ============================
+const efeitos=[];
+function tracador(a,b,cor){
+  const len=a.distanceTo(b);
+  const m=new THREE.Mesh(new THREE.BoxGeometry(0.025,0.025,len),
+    new THREE.MeshBasicMaterial({color:cor||0xffd890}));
+  m.position.copy(a).lerp(b,0.5); m.lookAt(b);
+  scene.add(m); efeitos.push({obj:m,ttl:0.06});
+}
+function fagulha(p,cor){
+  const s=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,6),
+    new THREE.MeshBasicMaterial({color:cor||0xffcc88}));
+  s.position.copy(p); scene.add(s); efeitos.push({obj:s,ttl:0.13,cresce:18});
+}
+function fumaca(p,sobe){
+  const s=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),
+    new THREE.MeshBasicMaterial({color:0x9aa0a8,transparent:true,opacity:0.4}));
+  s.position.copy(p); scene.add(s);
+  efeitos.push({obj:s,ttl:sobe?1.4:0.45,cresce:sobe?2.2:5,fade:true,vy:sobe?0.9:0});
+}
+function flashInimigo(pos){
+  const s=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),
+    new THREE.MeshBasicMaterial({color:0xffd060}));
+  s.position.copy(pos); scene.add(s); efeitos.push({obj:s,ttl:0.05,cresce:10});
+  const l=new THREE.PointLight(0xffc060,1.4,6); l.position.copy(pos); scene.add(l);
+  efeitos.push({obj:l,ttl:0.05});
+}
+// emissores de vapor (galeria técnica)
+const vapores=[];
+function vapor(x,y,z){ vapores.push(new THREE.Vector3(x,y,z)); }
+
+// ============================ TIRO ============================
+function direcaoCamera(){
+  return new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(jogador.pitch,jogador.yaw,0,'YXZ'));
+}
+let assistCache=null, assistT=0;
+function alvoAssistido(){
+  if(assistT>0) return assistCache;
+  assistT=0.08;
+  const dir=direcaoCamera(); let melhor=null, melhorAng=0.085;
+  for(const e of inimigos){
+    if(e.estado==='morto') continue;
+    const alvo=e.g.position.clone().add(new THREE.Vector3(0,1.4,0));
+    const para=alvo.clone().sub(jogador.pos);
+    const dist=para.length(); if(dist>50) continue;
+    const ang=dir.angleTo(para.normalize());
+    if(ang<melhorAng&&temVisao(jogador.pos,alvo)){ melhorAng=ang; melhor=alvo; }
+  }
+  assistCache=melhor; return melhor;
+}
+function atirar(){
+  const def=ARSENAL[armaAtual], inv=inventario[armaAtual];
+  if(jogador.cooldown>0||jogador.recarregando>0||fim) return;
+  if(inv.mun<=0){ bip(210,0.08,0.07); recarregar(); return; }
+  inv.mun--; jogador.cooldown=def.cd; jogador.recuo=1; tiros++;
+  def.som(); flash.intensity=def.flash; setTimeout(()=>flash.intensity=0,45);
+  ultimoTiro.t=relogioJogo; ultimoTiro.pos.copy(jogador.pos); ultimoTiro.ruido=def.ruido;
+  const assist=alvoAssistido();
+  let dir=assist?assist.clone().sub(jogador.pos).normalize():direcaoCamera();
+  if(armaAtual==='fuzil'){ // dispersão do automático
+    dir=dir.clone(); dir.x+=(Math.random()-0.5)*0.022; dir.y+=(Math.random()-0.5)*0.022; dir.z+=(Math.random()-0.5)*0.022;
+  }
+  ray.set(jogador.pos,dir); ray.far=150;
+  const hits=ray.intersectObjects([...paredesMesh,...todasPartes],false);
+  if(hits.length){
+    const h=hits[0], e=h.object.userData.inimigo;
+    if(e&&e.estado!=='morto'){
+      acertos++; bip(950,0.045,0.09);
+      fagulha(h.point,0xd03525);
+      ferirInimigo(e, h.object.name==='cabeca'?100:def.dano);
+    } else { fagulha(h.point,0xbbb6a8); fumaca(h.point); }
+  }
+  atualizarMunHUD();
+}
+function recarregar(){
+  const inv=inventario[armaAtual];
+  if(jogador.recarregando>0||inv.mun>=ARSENAL[armaAtual].mag||inv.res<=0) return;
+  jogador.recarregando=armaAtual==='fuzil'?1.4:1.05;
+  bip(680,0.06,0.07);
+  setTimeout(()=>{ bip(460,0.06,0.07);
+    const mg=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.14,0.07),
+      new THREE.MeshLambertMaterial({color:0x1c2026}));
+    const wp=new THREE.Vector3(); arma.getWorldPosition(wp); mg.position.copy(wp);
+    scene.add(mg); efeitos.push({obj:mg,ttl:0.9,vy:-0.5,grav:true});
+  },300);
+  setTimeout(()=>bip(820,0.05,0.07),780);
+}
+
+// ============================ IA ============================
+function alertar(e){
+  if(e.estado!=='patrulha') return;
+  e.estado='alerta'; bip(640,0.07,0.08); bip(430,0.1,0.08);
+  setAlarme(true);
+  for(const o of inimigos)
+    if(o!==e&&o.estado==='patrulha'&&o.g.position.distanceTo(e.g.position)<14) o.estado='alerta';
+}
+function ferirInimigo(e,dano){
+  e.hp-=dano;
+  if(e.hp<=0&&e.estado!=='morto'){
+    e.estado='morto'; abates++; noiseBurst(0.18,250,0.16,2);
+    if(!e.torre&&!e.altura) criarDrop(e.g.position.x+(Math.random()-0.5),e.g.position.z+(Math.random()-0.5));
+  } else if(e.estado!=='morto'){ alertar(e); e.estado='alerta'; }
+}
+const _v1=new THREE.Vector3(), _v2=new THREE.Vector3();
+function atualizarInimigo(e,dt){
+  if(e.estado==='morto'){
+    if(e.tQueda<1){ e.tQueda=Math.min(1,e.tQueda+dt*2.6);
+      e.g.rotation.x=-1.5*e.tQueda; e.g.rotation.z=e.ladoQueda*0.35*e.tQueda; }
+    return;
+  }
+  const pPos=_v1.set(jogador.pos.x,1.5,jogador.pos.z);
+  const ePos=_v2.copy(e.g.position); ePos.y+=1.7;
+  const dx=pPos.x-ePos.x, dz=pPos.z-ePos.z;
+  const dist=Math.hypot(dx,dz);
+  let movendo=false;
+  // cache de linha de visão (custo de raycast)
+  e.losT-=dt;
+  function los(){ if(e.losT<=0){ e.losT=0.13; e.losVal=temVisao(ePos.clone(),pPos.clone()); } return e.losVal; }
+
+  if(e.estado==='patrulha'){
+    if(dist<e.visao){
+      const angAlvo=Math.atan2(dx,dz);
+      let dAng=angAlvo-e.g.rotation.y;
+      while(dAng>Math.PI)dAng-=6.283; while(dAng<-Math.PI)dAng+=6.283;
+      if(Math.abs(dAng)<1.15&&los()) alertar(e);
+    }
+    if(relogioJogo-ultimoTiro.t<0.3&&e.g.position.distanceTo(ultimoTiro.pos)<ultimoTiro.ruido) alertar(e);
+    if(!e.parado){
+      const wp=e.wps[e.wpi];
+      const wx=wp.x-e.g.position.x, wz=wp.y-e.g.position.z, dw=Math.hypot(wx,wz);
+      if(dw<0.5) e.wpi=(e.wpi+1)%e.wps.length;
+      else{ e.g.position.x+=wx/dw*2*dt; e.g.position.z+=wz/dw*2*dt;
+        e.g.rotation.y=Math.atan2(wx,wz);
+        resolverColisao(e.g.position,0.4); movendo=true; }
+    }
+  } else {
+    e.g.rotation.y=Math.atan2(dx,dz);
+    if(dist>9&&!e.torre&&!e.parado&&e.tp.vel>0){
+      const n=1/dist;
+      e.g.position.x+=dx*n*e.tp.vel*dt; e.g.position.z+=dz*n*e.tp.vel*dt;
+      resolverColisao(e.g.position,0.4); movendo=true;
+    }
+    e.tTiro-=dt;
+    if(e.tTiro<=0&&dist<e.tp.alc&&los()){
+      e.tTiro=e.tp.imin+Math.random()*(e.tp.imax-e.tp.imin);
+      tiroInimigo();
+      const tip=new THREE.Vector3(); e.ponta.getWorldPosition(tip);
+      flashInimigo(tip);
+      const erro=new THREE.Vector3((Math.random()-0.5)*1.7,(Math.random()-0.5)*1.2,(Math.random()-0.5)*1.7);
+      tracador(tip,pPos.clone().add(erro), e.sniper?0xff4040:0xff9050);
+      const chance=e.sniper?Math.max(0.3,0.8-dist*0.008):Math.max(0.17,0.68-dist*0.016);
+      if(Math.random()<chance) ferirJogador((e.tp.dmin+Math.random()*(e.tp.dmax-e.tp.dmin))|0);
+    }
+  }
+  const alvoSwing=movendo?1:0;
+  e.fase+=dt*(e.estado==='alerta'?10.5:7)*Math.max(alvoSwing,0.001);
+  const s=Math.sin(e.fase)*0.55*alvoSwing;
+  e.pernaE.rotation.x=s; e.pernaD.rotation.x=-s;
+  const k=Math.min(1,dt*8);
+  if(e.estado==='alerta'){
+    e.bracoD.rotation.x+=(-1.25-e.bracoD.rotation.x)*k;
+    e.bracoE.rotation.x+=(-1.0-e.bracoE.rotation.x)*k;
+    e.bracoE.rotation.z+=(0.5-e.bracoE.rotation.z)*k;
+  } else {
+    e.bracoD.rotation.x+=(-s*0.5-e.bracoD.rotation.x)*k*0.7;
+    e.bracoE.rotation.x+=(s*0.5-e.bracoE.rotation.x)*k*0.7;
+    e.bracoE.rotation.z+=(0-e.bracoE.rotation.z)*k*0.7;
+  }
+}
+function ferirJogador(d){
+  if(fim) return;
+  if(jogador.col>0){
+    const abs=Math.min(jogador.col,d*0.65);
+    jogador.col-=abs; d-=abs;
+    document.getElementById('colFill').style.width=jogador.col+'%';
+  }
+  jogador.vida-=d; noiseBurst(0.16,260,0.2,2);
+  const v=document.getElementById('dano');
+  v.style.opacity=0.9; setTimeout(()=>v.style.opacity=0,130);
+  document.getElementById('vidaFill').style.width=Math.max(0,jogador.vida)+'%';
+  if(jogador.vida<=0) terminar(false);
+}
+
+// ============================ FIM ============================
+function terminar(vitoria){
+  fim=true; setAlarme(false);
+  document.exitPointerLock&&document.exitPointerLock();
+  const t=(relogioJogo-tInicio).toFixed(1);
+  const prec=tiros>0?Math.round(acertos/tiros*100):0;
+  const f=document.getElementById('fim');
+  f.className='overlay '+(vitoria?'vitoria':'derrota');
+  document.getElementById('fimTitulo').textContent=vitoria?'MISSÃO CUMPRIDA':'MISSÃO FALHOU';
+  document.getElementById('fimStats').innerHTML=
+    `TEMPO: ${t}s · ABATES: ${abates} · PRECISÃO: ${prec}%<br>`+
+    (vitoria?nivel.textoVitoria:nivel.textoDerrota);
+  if(vitoria){ explosaoSom();
+    document.getElementById('dano').style.opacity=0.8;
+    setTimeout(()=>document.getElementById('dano').style.opacity=0,700); }
+  setTimeout(()=>{ f.style.display='flex'; document.getElementById('hud').style.display='none'; },
+    vitoria?1000:300);
+}
+
+/* =====================================================================
+   FASE 1 — COMPLEXO VEKTRA (noturna)
+   ===================================================================== */
+function construirFase1(){
+  nivel.nome='OPERAÇÃO ECLIPSE — Complexo Vektra';
+  nivel.textoVitoria='O gerador Vektra foi reduzido a sucata. Excelente trabalho, Agente 09.';
+  nivel.textoDerrota='A Vektra venceu desta vez. Reagrupe e tente novamente, Agente.';
+  nivel.objetivos=[
+    {id:'hack', texto:'Hackear o terminal (ala leste)', feito:false},
+    {id:'bomba',texto:'Plantar explosivo (ala oeste)', feito:false},
+  ];
+  nivel.extracao=new THREE.Vector3(0,0,29);
+  jogador.pos.set(0,1.62,30); jogador.yaw=Math.PI;
+
+  scene.fog=new THREE.Fog(0x04060c,9,58);
+  scene.add(new THREE.HemisphereLight(0x2a3a5e,0x0a0c10,0.55));
+  const lua=new THREE.DirectionalLight(0x8899cc,0.5);
+  lua.position.set(-28,48,-18); lua.castShadow=true;
+  lua.shadow.mapSize.set(2048,2048);
+  lua.shadow.camera.left=-48; lua.shadow.camera.right=48;
+  lua.shadow.camera.top=48; lua.shadow.camera.bottom=-48;
+  lua.shadow.camera.far=130; lua.shadow.bias=-0.0006;
+  scene.add(lua);
+  const ceu=new THREE.Mesh(new THREE.SphereGeometry(180,24,16),
+    new THREE.MeshBasicMaterial({map:texCeuNoite,side:THREE.BackSide,fog:false}));
+  scene.add(ceu);
+  const luaDisco=new THREE.Mesh(new THREE.CircleGeometry(6,24),
+    new THREE.MeshBasicMaterial({color:0xdde6ff,fog:false}));
+  luaDisco.position.set(-90,110,-80); luaDisco.lookAt(0,0,0); scene.add(luaDisco);
+
+  const chaoFora=new THREE.Mesh(new THREE.PlaneGeometry(80,80),mat(texAsfalto,20,20));
+  chaoFora.rotation.x=-Math.PI/2; chaoFora.receiveShadow=true; scene.add(chaoFora);
+  const chaoDentro=new THREE.Mesh(new THREE.PlaneGeometry(50,40),mat(texPiso,22,18));
+  chaoDentro.rotation.x=-Math.PI/2; chaoDentro.position.set(0,0.03,-10);
+  chaoDentro.receiveShadow=true; scene.add(chaoDentro);
+  const teto=new THREE.Mesh(new THREE.PlaneGeometry(50,40),mat(texMetal,16,12,0x6a7280));
+  teto.rotation.x=Math.PI/2; teto.position.set(0,5,-10); scene.add(teto);
+
+  parede(0,-35,70,1); parede(0,35,70,1); parede(-35,0,1,70); parede(35,0,1,70);
+  bloco(0,34.4,70,0.15,0.8,mat(texHazard,18,1),{colide:false,sombra:false});
+  parede(-14,10,22,1); parede(14,10,22,1);
+  parede(-25,-10,1,40); parede(25,-10,1,40); parede(0,-30,50,1);
+  parede(-21,0,8,1); parede(-8,0,10,1); parede(8,0,10,1); parede(21,0,8,1);
+  parede(-5,-26,1,8); parede(-5,-9,1,18); parede(5,-26,1,8); parede(5,-9,1,18);
+  bloco(0,10.2,52,0.6,0.9,mat(texConcreto,14,0.4),{y:5,colide:false});
+  bloco(0,-30.2,52,0.6,0.9,mat(texConcreto,14,0.4),{y:5,colide:false});
+  porta(0,10,true); porta(-15,0,true); porta(0,0,true); porta(15,0,true);
+  porta(-5,-20,false); porta(5,-20,false);
+
+  const placa=new THREE.Mesh(new THREE.PlaneGeometry(9,2.2),
+    new THREE.MeshLambertMaterial({map:texPlaca('VEKTRA  INDUSTRIES'),emissive:0x202832}));
+  placa.position.set(0,4.1,10.55); scene.add(placa);
+  for(const wx of [-19,-9,9,19]){
+    const j=new THREE.Mesh(new THREE.PlaneGeometry(2.4,1.3),
+      new THREE.MeshBasicMaterial({color:0x33465e}));
+    j.position.set(wx,3.4,10.52); scene.add(j);
+  }
+  for(let bz=-26;bz<10;bz+=6)
+    bloco(0,bz,49,0.5,0.45,matMetalEsc,{y:4.55,colide:false,sombra:false});
+  tubo(-24.4,-29,-24.4,9,3.9,0.13); tubo(-24.4,-29,-24.4,9,3.55,0.09,0x6a5648);
+  tubo(24.4,-29,24.4,9,3.9,0.13); tubo(4.6,-29,4.6,-1,3.7,0.1,0x4a5a6a);
+
+  caixa(-8,22,1.8,0.2); caixa(-6.3,22.2,1.8,-0.3); caixa(-7.2,20.5,1.8,0.1);
+  caixa(-7.2,23.1,1.6,0.4);
+  caixa(12,18,2.2,0.15); caixa(20,27,1.8,-0.2); caixa(-18,15,2,0.3);
+  caixa(-10,5,1.6,0.1); caixa(10,6,1.6,-0.25); caixa(18,-12,1.8,0.2); caixa(-18,-25,1.8,0);
+  for(const [bx,bz] of [[-21,-5],[-19.6,-5.2],[-20.3,-6.4],[22,14],[22.9,14.6]]){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,1.4,9),mat(texMetal,1,1,0x7d6a4d));
+    b.position.set(bx,0.7,bz); b.castShadow=true; scene.add(b); blob(bx,bz,0.8);
+    colisores.push({minX:bx-0.55,maxX:bx+0.55,minZ:bz-0.55,maxZ:bz+0.55});
+    paredesMesh.push(b);
+  }
+  // caminhão
+  (function(){
+    const g=new THREE.Group();
+    const bau=new THREE.Mesh(new THREE.BoxGeometry(3,2.6,5.5),mat(texMetal,3,2,0x5a6a5e));
+    bau.position.set(0,1.9,1); bau.castShadow=true;
+    const cab=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.9,2),mat(texMetal,2,1.4,0x4a565e));
+    cab.position.set(0,1.25,-3); cab.castShadow=true;
+    g.add(bau,cab);
+    for(const [rx,rz] of [[-1.5,-3],[1.5,-3],[-1.5,1.5],[1.5,1.5],[-1.5,3],[1.5,3]]){
+      const r=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,0.4,10),
+        new THREE.MeshLambertMaterial({color:0x14161a}));
+      r.rotation.z=Math.PI/2; r.position.set(rx,0.55,rz); g.add(r);
+    }
+    g.position.set(-24,0,23); g.rotation.y=0.35; scene.add(g);
+    colisores.push({minX:-27.5,maxX:-20.5,minZ:19,maxZ:27.5});
+    paredesMesh.push(bau,cab); blob(-24,23,4.5);
+  })();
+  // torre + holofote
+  torreVigia(26,22);
+  const spot=new THREE.SpotLight(0xffe9bb,1.5,45,0.42,0.5);
+  spot.position.set(25,7.3,21); spot.target.position.set(8,0,12);
+  scene.add(spot,spot.target);
+  coneLuz(25,7,21,8,0,12,0.4,5,0.16);
+  poste(-12,14); poste(12,29);
+  luzInterna(0,5,0xffe6c0,0.8,17); luzInterna(0,-14,0xbfffd8,0.6,13);
+  luzInterna(-15,-10,0xffe6c0,0.6,14); luzInterna(15,-10,0xffe6c0,0.6,14);
+  luzInterna(-15,-23,0x9fc4ff,0.55,12); luzInterna(15,-23,0x9effc0,0.5,12);
+
+  // gerador
+  const gNucleoMat=new THREE.MeshLambertMaterial({color:0x3a7cff,emissive:0x1640aa});
+  bloco(-15,-20,5,3,0.5,mat(texMetal,4,1,0x848e9a));
+  bloco(-15,-20,4,2.4,2.4,mat(texMetal,3.4,2,0xa8b2c0),{y:0.5});
+  const nuc=new THREE.Mesh(new THREE.CylinderGeometry(0.66,0.66,3.4,10),gNucleoMat);
+  nuc.position.set(-15,1.9,-20); nuc.rotation.z=Math.PI/2; scene.add(nuc);
+  tubo(-15,-21.2,-15,-29,2.6,0.16,0x707a6a); tubo(-13,-20,-13,-29,1.6,0.12,0x6a5648);
+  const lg=new THREE.PointLight(0x3a7cff,0.9,9); lg.position.set(-15,2.4,-19); scene.add(lg);
+  blob(-15,-20,3.4);
+  // terminal + racks
+  bloco(15,-20,2.4,1,0.95,mat(texMetal,2,1,0x7a828e));
+  const tela=new THREE.Mesh(new THREE.BoxGeometry(1.5,1,0.14),
+    new THREE.MeshLambertMaterial({color:0x222a30}));
+  tela.position.set(15,1.65,-20); tela.rotation.x=-0.14; tela.castShadow=true; scene.add(tela);
+  const vis=new THREE.Mesh(new THREE.PlaneGeometry(1.34,0.86),
+    new THREE.MeshBasicMaterial({map:texTela}));
+  vis.position.set(15,1.66,-19.91); vis.rotation.x=-0.14; scene.add(vis);
+  for(let i=0;i<4;i++){
+    bloco(23.8,-7-i*2.6,0.9,2.2,2.3,mat(texRack,1,2));
+    const lf=new THREE.Mesh(new THREE.PlaneGeometry(2.1,2.1),
+      new THREE.MeshBasicMaterial({map:texRack.clone(),transparent:true,opacity:0.95}));
+    lf.position.set(23.32,1.25,-7-i*2.6); lf.rotation.y=-Math.PI/2; scene.add(lf);
+  }
+  blob(15,-20,2);
+  // colete
+  const cv=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.45,0.25),
+    new THREE.MeshLambertMaterial({color:0x2a4a7c,emissive:0x12233e}));
+  cv.position.y=0.55;
+  criarPickup(21,-26,'colete',cv,()=>{
+    jogador.col=100; document.getElementById('colFill').style.width='100%';
+    bip(900,0.1,0.1); bip(1200,0.14,0.1); mensagem('COLETE BALÍSTICO EQUIPADO');
+  });
+
+  nivel.interagiveis=[
+    {pos:new THREE.Vector3(15,1.2,-20),rotulo:'HACKEAR TERMINAL',tempo:4,prog:0,feito:false,
+     concluir(){ this.feito=true; bip(1200,0.15,0.13); bip(1550,0.22,0.13);
+       mensagem('DADOS COPIADOS — TERMINAL HACKEADO'); objetivoConcluido('hack'); }},
+    {pos:new THREE.Vector3(-15,1.2,-20),rotulo:'PLANTAR EXPLOSIVO',tempo:2.5,prog:0,feito:false,
+     concluir(){ this.feito=true; bip(480,0.1,0.13); bip(290,0.28,0.13);
+       gNucleoMat.color.set(0xff4430); gNucleoMat.emissive.set(0xaa1804);
+       mensagem('EXPLOSIVO ARMADO — DETONAÇÃO NA EXTRAÇÃO'); objetivoConcluido('bomba'); }},
+  ];
+
+  criarGuarda([V2c(-10,20),V2c(10,20)]);
+  criarGuarda([V2c(-20,29),V2c(18,29)]);
+  criarGuarda([V2c(26,22)],{parado:true,torre:true,altura:5.5,visao:30});
+  criarGuarda([V2c(-10,5),V2c(10,5)]);
+  criarGuarda([V2c(0,-5),V2c(0,-25)]);
+  criarGuarda([V2c(-15,-5),V2c(-21,-14)]);
+  criarGuarda([V2c(-10,-16)],{parado:true});
+  criarGuarda([V2c(15,-5),V2c(21,-14)]);
+  criarGuarda([V2c(10,-16)],{parado:true,tipo:'oficial'});
+
+  mensagem('02:40 AM — INFILTRE-SE. EVITE OS HOLOFOTES.');
+}
+
+/* =====================================================================
+   FASE 2 — REPRESA KRAVA (diurna nublada, longa)
+   Eixo: estrada ao sul (z+), represa ao norte (z-)
+   ===================================================================== */
+function construirFase2(){
+  nivel.nome='OPERAÇÃO ECLIPSE — Represa Krava';
+  nivel.textoVitoria='Transformadores sabotados e planos roubados. Você desce a face da represa no rapel e some na neblina. Lendário, Agente 09.';
+  nivel.textoDerrota='Seu corpo nunca foi encontrado nas montanhas. A Krava segue operando.';
+  nivel.objetivos=[
+    {id:'portao', texto:'Abrir o portão pelo painel da guarita', feito:false},
+    {id:'sabotar',texto:'Sabotar os transformadores (galeria técnica)', feito:false},
+    {id:'docs',   texto:'Roubar os planos do cofre (prédio adm.)', feito:false},
+  ];
+  nivel.extracao=new THREE.Vector3(62,0,-46);
+  jogador.pos.set(0,1.62,250); jogador.yaw=Math.PI;
+
+  // luz fria nublada
+  scene.fog=new THREE.Fog(0x9aa4ad,18,110);
+  scene.add(new THREE.HemisphereLight(0xaeb8c2,0x4a4f46,0.95));
+  const sol=new THREE.DirectionalLight(0xdde4ea,0.55);
+  sol.position.set(-40,70,30); sol.castShadow=true;
+  sol.shadow.mapSize.set(2048,2048);
+  sol.shadow.camera.left=-150; sol.shadow.camera.right=150;
+  sol.shadow.camera.top=180; sol.shadow.camera.bottom=-180;
+  sol.shadow.camera.far=300; sol.shadow.bias=-0.0008;
+  scene.add(sol);
+  const ceu=new THREE.Mesh(new THREE.SphereGeometry(420,24,16),
+    new THREE.MeshBasicMaterial({map:texCeuNublado,side:THREE.BackSide,fog:false}));
+  scene.add(ceu);
+
+  // montanhas distantes (fora da neblina, pré-esmaecidas)
+  for(let i=0;i<16;i++){
+    const ang=(i/16)*Math.PI*2 + Math.random()*0.2;
+    const dist=220+Math.random()*120;
+    const mx=Math.cos(ang)*dist, mz=Math.sin(ang)*dist-60;
+    const h=40+Math.random()*70, r=60+Math.random()*50;
+    const tom=0x8b95a0 + ((Math.random()*10|0)<<8);
+    const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,5+(Math.random()*3|0)),
+      new THREE.MeshBasicMaterial({color:tom,fog:false}));
+    m.position.set(mx,h/2-26,mz); m.rotation.y=Math.random()*3; scene.add(m);
+  }
+
+  // chão geral (terra fria de montanha)
+  const chao=new THREE.Mesh(new THREE.PlaneGeometry(400,560),mat(texTerra,60,84));
+  chao.rotation.x=-Math.PI/2; chao.position.z=20; chao.receiveShadow=true; scene.add(chao);
+
+  // helpers de estrada
+  function estrada(x1,z1,x2,z2,larg){
+    const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz);
+    const t=texEstrada.clone(); t.needsUpdate=true; t.repeat.set(1,len/9);
+    const p=new THREE.Mesh(new THREE.PlaneGeometry(larg||6,len),
+      new THREE.MeshLambertMaterial({map:t}));
+    p.rotation.x=-Math.PI/2; p.rotation.z=-Math.atan2(dx,dz);
+    p.position.set((x1+x2)/2,0.02,(z1+z2)/2); p.receiveShadow=true; scene.add(p);
+  }
+  function placaSolo(x,z,txt,rot){
+    const pl=new THREE.Mesh(new THREE.PlaneGeometry(3.6,0.95),
+      new THREE.MeshLambertMaterial({map:texPlaca(txt,'#ffd24d','#222826')}));
+    pl.position.set(x,1.7,z); pl.rotation.y=rot||0; scene.add(pl);
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.7,5),matMetalEsc);
+    p.position.set(x,0.85,z); scene.add(p);
+  }
+
+  // ===== ÁREA 1 — Estrada de entrada (z 250 → 165) =====
+  estrada(0,255,0,160,6.5);
+  placaSolo(-4.2,242,'ÁREA RESTRITA',0.3);
+  placaSolo(4.2,205,'REPRESA KRAVA — 2 KM',-0.3);
+  // paredões de rocha canalizando a estrada
+  for(let z=255;z>160;z-=9){
+    rocha(-8-Math.random()*4,z+Math.random()*4,3.2+Math.random()*2.4);
+    rocha(8+Math.random()*4,z-Math.random()*4,3.2+Math.random()*2.4);
+  }
+  arvore(-6.5,236,1.2); arvore(7,222,1.4); arvore(-7,196,1.1); arvore(6.6,178,1.3);
+  // veículo abandonado + barris
+  bloco(5,230,2,3.4,1.5,mat(texMetal,2,1,0x5e5346)); blob(5,230,2.2);
+  for(const [bx,bz] of [[-4.6,214],[-4,213.3]]){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,1.4,9),mat(texMetal,1,1,0x7d6a4d));
+    b.position.set(bx,0.7,bz); b.castShadow=true; scene.add(b);
+    colisores.push({minX:bx-0.55,maxX:bx+0.55,minZ:bz-0.55,maxZ:bz+0.55}); paredesMesh.push(b);
+  }
+  criarGuarda([V2c(0,225),V2c(0,200)],{tipo:'campo'});
+  criarGuarda([V2c(3,184)],{parado:true,tipo:'campo'});
+
+  // ===== ÁREA 2 — Checkpoint (z ≈ 155) =====
+  cerca(-26,158,-3.2,158,2.6); cerca(3.2,158,26,158,2.6);
+  rocha(-29,157,4); rocha(29,157,4);
+  // portão (abre pelo painel da guarita)
+  const portaoMesh=bloco(0,158,6.4,0.3,2.6,mat(texHazard,3,1));
+  const portaoCol=colisores[colisores.length-1];
+  let portaoAberto=false, portaoAnim=0;
+  // guarita
+  parede(8.5,153,5,0.4,3,texMetal); parede(8.5,148.6,5,0.4,3,texMetal);
+  parede(6.2,150.8,0.4,4.8,3,texMetal); parede(10.8,150.8,0.4,4.8,3,texMetal);
+  // abertura: porta no lado oeste
+  (function(){ // recorta visualmente: porta de batente
+    porta(6.2,150.8,false,2.6);
+  })();
+  // remove o colisor da parede oeste e recoloca em dois segmentos com vão
+  removerColisor(c=>c.minX<6.3&&c.maxX>6.1&&c.minZ<149);
+  parede(6.2,148.9,0.4,1,3,texMetal); parede(6.2,152.7,0.4,1,3,texMetal);
+  const tetoG=new THREE.Mesh(new THREE.BoxGeometry(5.4,0.25,5.2),matMetalEsc);
+  tetoG.position.set(8.5,3.1,150.8); tetoG.castShadow=true; scene.add(tetoG);
+  // interior da guarita: mesa, rádio, telefone, armário
+  bloco(9.4,150.8,1.6,0.8,0.85,mat(texMetal,1.4,0.8,0x6a7078));
+  const radio=bloco(9.6,150.5,0.5,0.3,0.3,matMetalEsc,{y:0.85,colide:false});
+  bloco(10.3,149.2,0.9,0.5,1.9,mat(texMetal,1,1.6,0x596068)); // armário
+  luzInterna(8.5,150.8,0xfff0d0,0.6,7,3);
+  // FUZIL RV-9 sobre a mesa!
+  const fz=new THREE.Group();
+  const fc=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.1,0.85),
+    new THREE.MeshLambertMaterial({color:0x14171c,emissive:0x0a2010}));
+  fz.add(fc); fz.position.y=1.05; fz.rotation.y=0.6;
+  criarPickup(9.2,150.8,'fuzil',fz,()=>{
+    inventario.fuzil.tem=true; inventario.fuzil.mun=30; inventario.fuzil.res=60;
+    trocarArma('fuzil');
+    mensagem('FUZIL RV-9 ADQUIRIDO — automático, mas BARULHENTO');
+  });
+  // torre do checkpoint
+  torreVigia(-9,151,6.5);
+  criarGuarda([V2c(-9,151)],{parado:true,torre:true,altura:6.6,tipo:'campo',visao:34});
+  criarGuarda([V2c(-3,155),V2c(3,155)],{tipo:'campo'});
+  criarGuarda([V2c(5,160)],{parado:true,tipo:'campo'});
+  criarGuarda([V2c(8.5,150)],{parado:true,tipo:'oficial'});
+
+  // painel que abre o portão (na guarita)
+  nivel.interagiveis.push({
+    pos:new THREE.Vector3(9.4,1.1,150.8),rotulo:'ACIONAR PAINEL DO PORTÃO',tempo:1.6,prog:0,feito:false,
+    concluir(){ this.feito=true; portaoAberto=true;
+      bip(880,0.12,0.12); bip(1180,0.16,0.12);
+      mensagem('PORTÃO DO CHECKPOINT ABERTO'); objetivoConcluido('portao'); }
+  });
+  // animação do portão no loop
+  nivel.tick=(dt)=>{
+    if(portaoAberto&&portaoAnim<1){
+      portaoAnim=Math.min(1,portaoAnim+dt*0.5);
+      portaoMesh.position.x=portaoAnim*6.6;
+      portaoCol.minX=portaoMesh.position.x-3.2; portaoCol.maxX=portaoMesh.position.x+3.2;
+    }
+    aguaTex.offset.y+=dt*0.035; aguaTex2.offset.x+=dt*0.02;
+    radar.rotation.y+=dt*0.7;
+  };
+
+  // ===== ÁREA 3 — Estrada serpenteante (z 145 → 70) =====
+  estrada(0,158,0,132,6.5);
+  estrada(0,134,-20,112,6.5);
+  estrada(-20,114,-20,96,6.5);
+  estrada(-20,98,8,78,6.5);
+  estrada(6,80,6,64,6.5);
+  // rochas guiando as curvas
+  for(const [rx,rz,rr] of [[-8,128,4],[9,124,4.5],[-30,108,5],[-9,104,4],[-30,88,4.5],[-4,90,4],[16,76,4.5],[-6,72,4],[16,62,4]])
+    rocha(rx,rz,rr);
+  arvore(-14,122,1.3); arvore(-26,99,1.5); arvore(2,86,1.2); arvore(13,70,1.4);
+  // caminhão e containers na curva
+  bloco(-14,96,2.6,6,2.6,mat(texMetal,2,2,0x55604f)); blob(-14,96,3.4);
+  container(-26,80,0x7a4030,0.3); container(-24,76,0x32525e,-0.1);
+  // jipe militar
+  (function(){
+    const j=new THREE.Group();
+    const ch=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.8,3.2),mat(texMetal,1.6,0.8,0x4d5a44));
+    ch.position.y=0.85; ch.castShadow=true; j.add(ch);
+    const cp=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.5,1.4),mat(texMetal,1.4,0.5,0x3e4a38));
+    cp.position.set(0,1.45,0.5); j.add(cp);
+    for(const [rx,rz] of [[-0.95,-1.1],[0.95,-1.1],[-0.95,1.1],[0.95,1.1]]){
+      const r=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.3,9),
+        new THREE.MeshLambertMaterial({color:0x14161a}));
+      r.rotation.z=Math.PI/2; r.position.set(rx,0.42,rz); j.add(r);
+    }
+    j.position.set(2,108,0); j.position.set(2,0,108); j.rotation.y=0.9; scene.add(j);
+    colisores.push({minX:0,maxX:4,minZ:106,maxZ:110}); blob(2,108,2.4);
+  })();
+  criarGuarda([V2c(0,140),V2c(-16,116)],{tipo:'campo'});
+  criarGuarda([V2c(-20,104),V2c(-12,88)],{tipo:'campo'});
+  // sniper num barranco
+  rocha(22,92,5,0); bloco(22,92,4,4,3.4,mat(texRocha,2,1.6),{visao:false});
+  criarGuarda([V2c(22,92)],{tipo:'sniper',parado:true,altura:3.4,torre:true});
+
+  // ===== ÁREA 4 — Torre de vigia principal (z ≈ 60) =====
+  torreVigia(20,56,9);
+  criarGuarda([V2c(20,56)],{tipo:'sniper',parado:true,torre:true,altura:9.1});
+  const spot2=new THREE.SpotLight(0xfff2cc,0.9,60,0.4,0.5);
+  spot2.position.set(19,10.5,55); spot2.target.position.set(0,0,30);
+  scene.add(spot2,spot2.target);
+
+  // ===== ÁREA 5 — Complexo externo (z 50 → 0) =====
+  estrada(6,66,0,40,7);
+  const patio=new THREE.Mesh(new THREE.PlaneGeometry(96,56),mat(texAsfalto,24,14));
+  patio.rotation.x=-Math.PI/2; patio.position.set(0,0.025,12); patio.receiveShadow=true; scene.add(patio);
+  cerca(-48,40,-10,40); cerca(10,40,48,40);
+  rocha(-52,38,5); rocha(52,38,5);
+  container(-30,28,0x7a4030,0.1); container(-30,24.6,0x32525e,0); container(-28,31.5,0x5e5630,0.15);
+  container(24,30,0x4f3a5e,-0.2); container(30,26,0x32525e,0.05);
+  caixa(-12,26,2,0.2); caixa(-9.8,26.3,2,-0.1); caixa(-11,24.2,1.7,0.3);
+  caixa(14,20,1.8,0.1); caixa(34,12,2.2,0); caixa(-36,10,1.9,0.25);
+  // guindaste
+  (function(){
+    bloco(-40,18,1.4,1.4,14,mat(texMetal,1,8,0xb0a040));
+    bloco(-26,18,1.4,1.4,14,mat(texMetal,1,8,0xb0a040));
+    bloco(-33,18,16,1.2,1.2,mat(texMetal,8,1,0xb0a040),{y:13,colide:false});
+    const cabo=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,6,4),matMetalEsc);
+    cabo.position.set(-33,10,18); scene.add(cabo);
+    const gancho=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.6,0.5),matMetalEsc);
+    gancho.position.set(-33,6.8,18); scene.add(gancho);
+  })();
+  // empilhadeira
+  bloco(8,28,1.4,2.2,1.4,mat(texMetal,1,1,0xb08030)); blob(8,28,1.6);
+  bloco(8,26.7,1.3,0.25,2.6,matMetalEsc,{colide:false});
+  // geradores externos
+  bloco(38,18,3,2,1.8,mat(texMetal,2.4,1.4,0x8a929e)); blob(38,18,2.2);
+  bloco(38,15.4,3,2,1.8,mat(texMetal,2.4,1.4,0x8a929e)); blob(38,15.4,2.2);
+  poste(-20,34,0xfff2d0); poste(20,34,0xfff2d0); poste(0,14,0xfff2d0);
+  criarGuarda([V2c(-20,28),V2c(14,24)],{tipo:'campo'});
+  criarGuarda([V2c(30,18),V2c(-8,16)],{tipo:'campo'});
+  criarGuarda([V2c(-34,22)],{parado:true,tipo:'campo'});
+  criarGuarda([V2c(36,28)],{parado:true,tipo:'campo'});
+  criarGuarda([V2c(0,22),V2c(0,6)],{tipo:'oficial'});
+
+  // ===== ÁREA 6 — Galeria técnica (oeste, x -45..-15, z -4..-34) =====
+  const matPar2=texConcreto;
+  // casco externo (7 de altura, com janelas falsas = 3 andares visuais)
+  parede(-30,-4,30,1,7); parede(-30,-34,30,1,7);
+  parede(-45,-19,1,31,7); parede(-15,-19,1,31,7);
+  // entrada leste
+  removerColisor(c=>Math.abs(c.minX+15.5)<0.6&&c.minZ<-16&&c.maxZ>-22);
+  parede(-15,-8.5,1,10,7); parede(-15,-29.5,1,10,7); parede(-15,-16,1,4,7);
+  porta(-15,-20.5,false,3.4);
+  // piso/teto internos
+  const pisoG=new THREE.Mesh(new THREE.PlaneGeometry(29,29),mat(texPiso,14,14));
+  pisoG.rotation.x=-Math.PI/2; pisoG.position.set(-30,0.04,-19); pisoG.receiveShadow=true; scene.add(pisoG);
+  const tetoG2=new THREE.Mesh(new THREE.PlaneGeometry(29,29),mat(texMetal,10,10,0x596068));
+  tetoG2.rotation.x=Math.PI/2; tetoG2.position.set(-30,3.6,-19); scene.add(tetoG2);
+  // janelas falsas externas (3 fileiras = 3 andares)
+  for(let f=0;f<3;f++) for(const wx of [-40,-34,-26,-20]){
+    const j=new THREE.Mesh(new THREE.PlaneGeometry(1.8,1),
+      new THREE.MeshBasicMaterial({color:0x2c3a48}));
+    j.position.set(wx,1.8+f*1.8,-3.45); scene.add(j);
+  }
+  const placaG=new THREE.Mesh(new THREE.PlaneGeometry(7,1.6),
+    new THREE.MeshLambertMaterial({map:texPlaca('GALERIA TÉCNICA','#9fd0ff')}));
+  placaG.position.set(-14.4,4.4,-20.5); placaG.rotation.y=Math.PI/2; scene.add(placaG);
+  // corredor + salas internas: divisórias
+  parede(-26,-12,22,0.6,3.6); // corredor norte do vão de entrada
+  removerColisor(c=>c.minZ<-11.6&&c.maxZ>-12.4&&c.minX<-19&&c.maxX>-18);
+  parede(-19.5,-12,9,0.6,3.6); parede(-32.5,-12,9,0.6,3.6); porta(-25,-12,true,3.2);
+  parede(-37,-23,0.6,22,3.6);
+  removerColisor(c=>Math.abs(c.minX+37.3)<0.6&&c.minZ<-21);
+  parede(-37,-15,0.6,6,3.6); parede(-37,-29.5,0.6,9,3.6); porta(-37,-20.5,false,3.2);
+  // sala de manutenção (sul-leste): bancadas e ferramentas
+  bloco(-20,-30,5,1.2,0.95,mat(texMetal,4,0.8,0x6a7078));
+  bloco(-19,-29.4,0.6,0.4,0.25,matMetalEsc,{y:0.95,colide:false});
+  bloco(-21.5,-29.5,0.5,0.5,0.4,mat(texCaixa,0.6,0.6),{y:0.95,colide:false});
+  // SALA ELÉTRICA (oeste): transformadores = OBJETIVO
+  for(let i=0;i<3;i++){
+    bloco(-42,-12-i*5,2.2,2.6,2.4,mat(texMetal,2,2,0x7a8290));
+    const iso=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.8,6),
+      new THREE.MeshLambertMaterial({color:0xb8a060}));
+    iso.position.set(-42,2.8,-12-i*5); scene.add(iso);
+  }
+  tubo(-42,-10.5,-42,-26,3.2,0.08,0x303640);
+  luzInterna(-41,-17,0xaad4ff,0.6,12,3.6);
+  const luzPisca=new THREE.PointLight(0xffe080,0.0,8); luzPisca.position.set(-42,2.6,-17); scene.add(luzPisca);
+  setInterval(()=>{ luzPisca.intensity=Math.random()<0.3?0.8:0; },300);
+  vapor(-39,0.4,-13); vapor(-40,0.4,-24);
+  nivel.interagiveis.push({
+    pos:new THREE.Vector3(-42,1.2,-17),rotulo:'SABOTAR TRANSFORMADORES',tempo:3.2,prog:0,feito:false,
+    concluir(){ this.feito=true; bip(420,0.12,0.13); bip(260,0.3,0.13);
+      noiseBurst(0.5,900,0.3,2);
+      mensagem('TRANSFORMADORES SABOTADOS'); objetivoConcluido('sabotar'); }
+  });
+  // sala de controle secundário (norte): CRTs
+  bloco(-30,-7.5,6,1.1,0.9,mat(texMetal,4,0.8,0x6a7078));
+  for(let i=0;i<3;i++){
+    const crt=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.75,0.7),
+      new THREE.MeshLambertMaterial({color:0x3c424c}));
+    crt.position.set(-32+i*2,1.3,-7.5); crt.castShadow=true; scene.add(crt);
+    const tela2=new THREE.Mesh(new THREE.PlaneGeometry(0.7,0.55),
+      new THREE.MeshBasicMaterial({map:texTelaCRT.clone()}));
+    tela2.position.set(-32+i*2,1.32,-7.12); scene.add(tela2);
+  }
+  luzInterna(-30,-8,0xfff0d0,0.55,10,3.6);
+  luzInterna(-25,-20,0xbfd4e8,0.5,12,3.6);
+  tubo(-16,-19,-36,-19,3.3,0.11,0x5a6452); tubo(-16,-21,-36,-21,3.1,0.08,0x6a5648);
+  criarGuarda([V2c(-25,-16),V2c(-25,-28)],{tipo:'comum'});
+  criarGuarda([V2c(-42,-22)],{parado:true,tipo:'comum'});
+  criarGuarda([V2c(-30,-8)],{parado:true,tipo:'comum'});
+
+  // ===== ÁREA 7 — Prédio administrativo (leste, x 15..45, z -4..-34) =====
+  parede(30,-4,30,1,7); parede(30,-34,30,1,7);
+  parede(15,-19,1,31,7); parede(45,-19,1,31,7);
+  removerColisor(c=>Math.abs(c.minX-14.5)<0.6&&c.minZ<-16&&c.maxZ>-22);
+  parede(15,-8.5,1,10,7); parede(15,-29.5,1,10,7); parede(15,-16,1,4,7);
+  porta(15,-20.5,false,3.4);
+  const pisoA=new THREE.Mesh(new THREE.PlaneGeometry(29,29),mat(texPiso,14,14));
+  pisoA.rotation.x=-Math.PI/2; pisoA.position.set(30,0.04,-19); pisoA.receiveShadow=true; scene.add(pisoA);
+  const tetoA=new THREE.Mesh(new THREE.PlaneGeometry(29,29),mat(texMetal,10,10,0x596068));
+  tetoA.rotation.x=Math.PI/2; tetoA.position.set(30,3.6,-19); scene.add(tetoA);
+  for(let f=0;f<3;f++) for(const wx of [20,26,34,40]){
+    const j=new THREE.Mesh(new THREE.PlaneGeometry(1.8,1),
+      new THREE.MeshBasicMaterial({color:0x2c3a48}));
+    j.position.set(wx,1.8+f*1.8,-3.45); scene.add(j);
+  }
+  // antenas no topo
+  for(const ax of [22,38]){
+    const an=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.08,5,5),matMetalEsc);
+    an.position.set(ax,9.5,-30); scene.add(an);
+  }
+  const placaA=new THREE.Mesh(new THREE.PlaneGeometry(7,1.6),
+    new THREE.MeshLambertMaterial({map:texPlaca('ADMINISTRAÇÃO','#ffd24d')}));
+  placaA.position.set(14.4,4.4,-20.5); placaA.rotation.y=-Math.PI/2; scene.add(placaA);
+  // recepção: balcão, sofás, mapa
+  bloco(21,-19,1,5,1.05,mat(texMetal,1,4,0x707a86));
+  bloco(19,-13,2.2,0.9,0.7,mat(texMetal,2,0.7,0x4a3a30)); // sofá
+  bloco(19,-26,2.2,0.9,0.7,mat(texMetal,2,0.7,0x4a3a30));
+  const mapa=new THREE.Mesh(new THREE.PlaneGeometry(3,2),
+    new THREE.MeshLambertMaterial({map:texPlaca('MAPA DA INSTALAÇÃO','#9fd0ff')}));
+  mapa.position.set(15.6,2,-13); mapa.rotation.y=Math.PI/2; scene.add(mapa);
+  // divisórias: segurança (norte) e escritórios (sul) + sala do comandante (fundo)
+  parede(27,-12,12,0.6,3.6);
+  parede(36.5,-12,5,0.6,3.6); porta(32,-12,true,3.2);
+  parede(30,-26,12,0.6,3.6); parede(41,-26,4,0.6,3.6); porta(38,-26,true,3.2);
+  // sala de segurança: parede de monitores
+  for(let i=0;i<6;i++){
+    const m1=new THREE.Mesh(new THREE.PlaneGeometry(1.3,0.85),
+      new THREE.MeshBasicMaterial({map:texTelaCRT.clone()}));
+    m1.position.set(20+(i%3)*1.6,1.4+Math.floor(i/3)*1.1,-4.6); scene.add(m1);
+  }
+  bloco(22,-7,4.5,1,0.9,mat(texMetal,3.6,0.8,0x6a7078));
+  // escritório do comandante: mesa, bandeira, COFRE = OBJETIVO
+  bloco(36,-31,2.6,1.2,0.95,mat(texMetal,2,1,0x5a4a3a));
+  const cofre=bloco(41.5,-31.5,1.4,1.2,1.5,mat(texMetal,1.2,1.2,0x3a4048));
+  const seg=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.06,10),
+    new THREE.MeshLambertMaterial({color:0x9aa4b0}));
+  seg.rotation.x=Math.PI/2; seg.position.set(41.5,0.85,-30.85); scene.add(seg);
+  luzInterna(36,-30,0xfff0d0,0.55,10,3.6);
+  luzInterna(22,-7,0x9fc4ff,0.5,9,3.6);
+  luzInterna(30,-19,0xfff0d0,0.6,13,3.6);
+  nivel.interagiveis.push({
+    pos:new THREE.Vector3(41.5,1,-31),rotulo:'ABRIR COFRE — ROUBAR PLANOS',tempo:4,prog:0,feito:false,
+    concluir(){ this.feito=true; bip(1100,0.1,0.12); bip(1400,0.1,0.12); bip(1750,0.2,0.12);
+      mensagem('PLANOS DA KRAVA ROUBADOS'); objetivoConcluido('docs'); }
+  });
+  criarGuarda([V2c(22,-19),V2c(38,-19)],{tipo:'comum'});
+  criarGuarda([V2c(22,-7)],{parado:true,tipo:'comum'});
+  criarGuarda([V2c(36,-30)],{parado:true,tipo:'oficial'});
+  criarGuarda([V2c(30,-22),V2c(30,-14)],{tipo:'comum'});
+  // colete na sala de segurança
+  const cv2=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.45,0.25),
+    new THREE.MeshLambertMaterial({color:0x2a4a7c,emissive:0x12233e}));
+  cv2.position.y=0.55;
+  criarPickup(25,-6.5,'colete',cv2,()=>{
+    jogador.col=100; document.getElementById('colFill').style.width='100%';
+    bip(900,0.1,0.1); bip(1200,0.14,0.1); mensagem('COLETE BALÍSTICO EQUIPADO');
+  });
+
+  // ===== ÁREA 8/9 — Passarela da represa (z -40 → -52, x -60 → 60) =====
+  const crista=new THREE.Mesh(new THREE.PlaneGeometry(124,13),mat(texDam,30,3,0x9aa0aa));
+  crista.rotation.x=-Math.PI/2; crista.position.set(0,0.05,-46); crista.receiveShadow=true; scene.add(crista);
+  // mureta sul (com vãos de acesso entre os prédios)
+  parede(-53,-39.5,16,0.8,1.1); parede(-30.5,-39.5,27,0.8,1.1);
+  parede(0,-39.5,28,0.8,1.1); parede(30.5,-39.5,27,0.8,1.1); parede(53,-39.5,16,0.8,1.1);
+  // acessos: x=-44..-38 (oeste) e x=44..38? mantém vãos em x=±44 e x=±14? — vãos reais: entre muretas
+  // mureta/parapeito norte (borda do abismo)
+  parede(0,-52.2,124,0.7,1.15,texDam);
+  for(let px=-60;px<=60;px+=6){
+    const p=new THREE.Mesh(new THREE.BoxGeometry(0.12,1.7,0.12),matMetalEsc);
+    p.position.set(px,0.85,-52.2); scene.add(p);
+  }
+  // FACE DA REPRESA (desce 70 m) + canyon + rio
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(124,72),mat(texDam,26,15));
+  face.position.set(0,-35.5,-52.6); scene.add(face);
+  // contrafortes
+  for(let cx=-52;cx<=52;cx+=26)
+    bloco(cx,-54.5,3,3,68,mat(texDam,1.4,16),{y:-69,colide:false});
+  // paredes do canyon
+  const can1=new THREE.Mesh(new THREE.PlaneGeometry(260,90),mat(texRocha,30,10));
+  can1.position.set(0,-40,-120); scene.add(can1);
+  const can2=new THREE.Mesh(new THREE.PlaneGeometry(90,80),mat(texRocha,12,9));
+  can2.rotation.y=Math.PI/2; can2.position.set(-64,-45,-86); scene.add(can2);
+  const can3=new THREE.Mesh(new THREE.PlaneGeometry(90,80),mat(texRocha,12,9));
+  can3.rotation.y=-Math.PI/2; can3.position.set(64,-45,-86); scene.add(can3);
+  // rio lá embaixo (animado)
+  const aguaTex=texAgua.clone(); aguaTex.needsUpdate=true; aguaTex.repeat.set(10,5);
+  const rio=new THREE.Mesh(new THREE.PlaneGeometry(128,62),
+    new THREE.MeshBasicMaterial({map:aguaTex}));
+  rio.rotation.x=-Math.PI/2; rio.position.set(0,-69,-84); scene.add(rio);
+  const aguaTex2=texAgua.clone(); aguaTex2.needsUpdate=true; aguaTex2.repeat.set(6,3);
+  // espuma na base
+  const espuma=new THREE.Mesh(new THREE.PlaneGeometry(124,8),
+    new THREE.MeshBasicMaterial({map:aguaTex2,color:0xcfe2ea}));
+  espuma.rotation.x=-Math.PI/2; espuma.position.set(0,-68.8,-56); scene.add(espuma);
+  // torres de iluminação na passarela
+  for(const tx of [-40,0,40]){
+    poste(tx,-44,0xfff2d0);
+  }
+  // válvulas e respiros (área 9 — centro)
+  for(const vx of [-18,18]){
+    const v=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.3,1.6,10),mat(texMetal,2,1.2,0x8a929e));
+    v.position.set(vx,0.8,-46); v.castShadow=true; scene.add(v);
+    colisores.push({minX:vx-1.2,maxX:vx+1.2,minZ:-47.2,maxZ:-44.8});
+    paredesMesh.push(v);
+    const volante=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.07,6,12),
+      new THREE.MeshLambertMaterial({color:0x8a2a22}));
+    volante.position.set(vx,1.9,-46); volante.rotation.x=Math.PI/2; scene.add(volante);
+  }
+  criarGuarda([V2c(-34,-46),V2c(-6,-46)],{tipo:'elite'});
+  criarGuarda([V2c(6,-46),V2c(34,-46)],{tipo:'elite'});
+  criarGuarda([V2c(-52,-46)],{parado:true,tipo:'comum'});
+  // snipers nas torres de luz? — nas extremidades da passarela
+  torreVigia(-58,-43,7);
+  criarGuarda([V2c(-58,-43)],{tipo:'sniper',parado:true,torre:true,altura:7.1});
+
+  // ===== ÁREA 10 — Torre final (leste da passarela) =====
+  parede(52,-41.5,8,0.6,4,texMetal); parede(52,-50.5,8,0.6,4,texMetal);
+  parede(48.2,-46,0.6,9,4,texMetal);
+  parede(55.8,-43.4,0.6,3,4,texMetal); parede(55.8,-48.6,0.6,3,4,texMetal);
+  const tetoT=new THREE.Mesh(new THREE.BoxGeometry(8.6,0.3,9.6),matMetalEsc);
+  tetoT.position.set(52,4.1,-46); tetoT.castShadow=true; scene.add(tetoT);
+  // radar girando no topo
+  const radar=new THREE.Group();
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.4,1,8),matMetalEsc);
+  const dish=new THREE.Mesh(new THREE.SphereGeometry(1.2,10,6,0,6.28,0,1.1),
+    new THREE.MeshLambertMaterial({color:0xb8c0ca,side:THREE.DoubleSide}));
+  dish.rotation.x=-1.1; dish.position.y=1.2;
+  radar.add(base,dish); radar.position.set(52,4.6,-46); scene.add(radar);
+  // interior: monitoramento + telescópio
+  bloco(50,-43.5,3,1,0.9,mat(texMetal,2.4,0.8,0x6a7078));
+  const t3=new THREE.Mesh(new THREE.PlaneGeometry(1.1,0.7),
+    new THREE.MeshBasicMaterial({map:texTelaCRT.clone()}));
+  t3.position.set(50,1.45,-43.05); scene.add(t3);
+  const telesc=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.13,1.1,7),matMetalEsc);
+  telesc.rotation.z=0.9; telesc.position.set(53.5,1.6,-48.5); scene.add(telesc);
+  luzInterna(52,-46,0xfff0d0,0.6,9,4);
+  criarGuarda([V2c(51,-46)],{parado:true,tipo:'oficial'});
+
+  // ===== ÁREA 11 — Plataforma de extração (extremo leste) =====
+  const platEx=new THREE.Mesh(new THREE.BoxGeometry(7,0.35,7),mat(texMetal,5,5));
+  platEx.position.set(62,0.18,-46); platEx.receiveShadow=true; platEx.castShadow=true; scene.add(platEx);
+  bloco(62,-42.6,7,0.25,1.2,matMetalEsc,{colide:false}); // corrimão
+  for(const pz of [-49.4]) bloco(62,pz,7,0.25,1.2,matMetalEsc,{colide:false});
+  // holofote e equipamentos de resgate
+  poste(64,-43.5,0xfff2d0);
+  bloco(64,-48.5,1,1,0.8,mat(texCaixa,1,1)); // caixa de resgate
+  const corda=new THREE.Mesh(new THREE.TorusGeometry(0.4,0.12,7,14),
+    new THREE.MeshLambertMaterial({color:0x8a7448}));
+  corda.position.set(60.5,0.45,-48.4); corda.rotation.x=Math.PI/2; scene.add(corda);
+  // borda do mundo: muro de rocha ao leste
+  rocha(70,-40,6); rocha(70,-52,6); rocha(58,-36,4);
+  // limites gerais do mapa (rochas barrando fuga lateral)
+  for(let z=36;z>-38;z-=10){ rocha(-52,z,5.5); rocha(52,z,5.5); }
+  cerca(-48,-38,-38,-38); cerca(38,-38,48,-38);
+
+  nivel.extracao.set(62,0,-46);
+  iniciarVento();
+  mensagem('REGIÃO MONTANHOSA — ALCANCE O TOPO DA REPRESA.');
+}
+
+/* ============================ FLUXO / SELEÇÃO ============================ */
+let faseEscolhida=1, construido=false;
+const BRIEFINGS={
+  1:'<b>MISSÃO 01 — COMPLEXO VEKTRA · 02:40 AM</b><br>Infiltração noturna. Hackeie o terminal de dados na ala leste, plante o explosivo no gerador da ala oeste e alcance a extração no pátio. Pistola silenciada: aja com discrição e fique fora dos holofotes.',
+  2:'<b>MISSÃO 02 — REPRESA KRAVA · 06:10 AM</b><br>Instalação militar nas montanhas. Abra o portão pelo painel da guarita (pegue o RV-9 lá dentro), atravesse a estrada serpenteante, sabote os transformadores na galeria técnica, roube os planos do cofre da administração e desça de rapel pela borda da represa. Cuidado com snipers e guardas de elite na passarela.',
+};
+document.getElementById('briefing').innerHTML=BRIEFINGS[1];
+document.querySelectorAll('.fase').forEach(el=>{
+  el.addEventListener('click',()=>{
+    document.querySelectorAll('.fase').forEach(f=>f.classList.remove('sel'));
+    el.classList.add('sel');
+    faseEscolhida=+el.dataset.fase;
+    document.getElementById('briefing').innerHTML=BRIEFINGS[faseEscolhida];
+  });
+});
+const titulo=document.getElementById('titulo');
+const relogioEl=document.getElementById('relogio');
+function travar(){ canvas.requestPointerLock(); }
+document.getElementById('iniciar').addEventListener('click',()=>{
+  audio(); iniciarMusica();
+  if(!construido){
+    construido=true;
+    (faseEscolhida===1?construirFase1:construirFase2)();
+    document.getElementById('relNome').textContent=nivel.nome;
+    atualizarObjetivosHUD();
+  }
+  titulo.style.display='none';
+  document.getElementById('hud').style.display='block';
+  if(!comecou){ comecou=true; tInicio=relogioJogo; }
+  travar();
+});
+relogioEl.addEventListener('click',travar);
+document.addEventListener('pointerlockchange',()=>{
+  const travado=document.pointerLockElement===canvas;
+  pausado=!travado;
+  if(comecou&&!fim){
+    relogioEl.style.display=travado?'none':'flex';
+    if(!travado){
+      const t=(relogioJogo-tInicio).toFixed(0);
+      document.getElementById('relStats').innerHTML=
+        `Tempo: ${t}s · Abates: ${abates} · Saúde: ${Math.max(0,jogador.vida)}% · Colete: ${jogador.col|0}%`;
+    }
+  }
+});
+addEventListener('keydown',e=>{
+  teclas[e.code]=true;
+  if(e.code==='Tab'){ e.preventDefault(); if(comecou&&!fim) document.exitPointerLock(); }
+  if(e.code==='KeyR') recarregar();
+  if(e.code==='Digit1') trocarArma('pistola');
+  if(e.code==='Digit2') trocarArma('fuzil');
+  if(e.code==='KeyM'){ musicaOn=!musicaOn; if(comecou) mensagem(musicaOn?'MÚSICA LIGADA':'MÚSICA DESLIGADA'); }
+});
+addEventListener('keyup',e=>teclas[e.code]=false);
+addEventListener('mousemove',e=>{
+  if(pausado||fim) return;
+  jogador.yaw-=e.movementX*0.0023;
+  jogador.pitch=Math.max(-1.35,Math.min(1.35,jogador.pitch-e.movementY*0.0023));
+  jogador.swayX=Math.max(-1,Math.min(1,jogador.swayX-e.movementX*0.02));
+  jogador.swayY=Math.max(-1,Math.min(1,jogador.swayY-e.movementY*0.02));
+});
+addEventListener('mousedown',e=>{
+  if(pausado||fim||e.button!==0) return;
+  mouseSegurado=true; atirar();
+});
+addEventListener('mouseup',e=>{ if(e.button===0) mouseSegurado=false; });
+
+// ============================ LOOP ============================
+let tAnt=performance.now(), vaporT=0;
+function frame(){
+  requestAnimationFrame(frame);
+  const agora=performance.now();
+  const dt=Math.min(0.05,(agora-tAnt)/1000); tAnt=agora;
+
+  if(!pausado&&!fim&&comecou){
+    relogioJogo+=dt; assistT-=dt;
+    if(nivel.tick) nivel.tick(dt);
+
+    // fogo automático
+    if(mouseSegurado&&ARSENAL[armaAtual].auto) atirar();
+
+    // movimento
+    let mx=0,mz=0;
+    if(teclas['KeyW'])mz-=1; if(teclas['KeyS'])mz+=1;
+    if(teclas['KeyA'])mx-=1; if(teclas['KeyD'])mx+=1;
+    const len=Math.hypot(mx,mz);
+    if(len>0){
+      mx/=len; mz/=len;
+      const sin=Math.sin(jogador.yaw),cos=Math.cos(jogador.yaw);
+      jogador.pos.x+=(mx*cos+mz*sin)*6.4*dt;
+      jogador.pos.z+=(-mx*sin+mz*cos)*6.4*dt;
+      resolverColisao(jogador.pos,jogador.raio);
+      jogador.passoFase+=dt*9;
+      if(jogador.passoFase>Math.PI){ jogador.passoFase-=Math.PI;
+        passo(jogador.passoAlt); jogador.passoAlt=!jogador.passoAlt; }
+    }
+    const bob=len>0?Math.sin(relogioJogo*9)*0.027:0;
+    jogador.cooldown=Math.max(0,jogador.cooldown-dt);
+    jogador.recuo=Math.max(0,jogador.recuo-dt*6);
+    jogador.swayX*=(1-Math.min(1,dt*7)); jogador.swayY*=(1-Math.min(1,dt*7));
+    if(jogador.recarregando>0){
+      jogador.recarregando-=dt;
+      if(jogador.recarregando<=0){
+        const inv=inventario[armaAtual], def=ARSENAL[armaAtual];
+        const pega=Math.min(def.mag-inv.mun,inv.res);
+        inv.mun+=pega; inv.res-=pega; atualizarMunHUD();
+      }
+    }
+    camera.position.set(jogador.pos.x,jogador.pos.y+bob,jogador.pos.z);
+    camera.rotation.set(jogador.pitch+jogador.recuo*0.06,jogador.yaw,0,'YXZ');
+    arma.position.set(0.21+jogador.swayX*0.01,-0.19+bob*0.55+jogador.swayY*0.008,
+      -0.42+jogador.recuo*0.05);
+    arma.rotation.x=jogador.recuo*0.32+(jogador.recarregando>0?0.55:0);
+    arma.rotation.z=jogador.swayX*0.02;
+    const vm=armaAtual==='pistola'?vmPistola:vmFuzil;
+    vm.userData.slide.position.z=(armaAtual==='pistola'?-0.06:-0.12)+jogador.recuo*0.05;
+
+    document.getElementById('crossAnel').style.opacity=alvoAssistido()?0.9:0;
+
+    for(const e of inimigos) atualizarInimigo(e,dt);
+    if(!inimigos.some(e=>e.estado==='alerta')) setAlarme(false);
+
+    // drops
+    for(let i=drops.length-1;i>=0;i--){
+      drops[i].rotation.y+=dt*2.2;
+      if(drops[i].position.distanceTo(jogador.pos)<1.15){
+        inventario.pistola.res+=8;
+        if(inventario.fuzil.tem) inventario.fuzil.res+=15;
+        atualizarMunHUD(); bip(1280,0.07,0.09);
+        scene.remove(drops[i]); drops.splice(i,1);
+        mensagem(inventario.fuzil.tem?'+8 PISTOLA · +15 FUZIL':'+8 MUNIÇÃO');
+      }
+    }
+    // pickups
+    for(const p of pickups){
+      if(p.pego) continue;
+      p.mesh.rotation.y+=dt*1.8;
+      if(p.mesh.position.distanceTo(jogador.pos)<1.4){
+        p.pego=true; scene.remove(p.mesh); p.aoColetar();
+        atualizarMunHUD();
+      }
+    }
+    // vapor da galeria
+    vaporT-=dt;
+    if(vaporT<=0&&vapores.length){ vaporT=0.33;
+      for(const v of vapores) if(v.distanceTo(jogador.pos)<26) fumaca(v,true);
+    }
+
+    // interação
+    const prompt=document.getElementById('prompt'),prog=document.getElementById('prog');
+    let alvoInt=null;
+    for(const it of nivel.interagiveis)
+      if(!it.feito&&it.pos.distanceTo(jogador.pos)<3.3){ alvoInt=it; break; }
+    if(alvoInt){
+      prompt.style.display='block';
+      prompt.textContent=`SEGURE [E] — ${alvoInt.rotulo}`;
+      if(teclas['KeyE']){
+        alvoInt.prog+=dt; prog.style.display='block';
+        document.getElementById('progFill').style.width=
+          Math.min(100,alvoInt.prog/alvoInt.tempo*100)+'%';
+        if(Math.random()<dt*6) bip(950+Math.random()*650,0.04,0.04);
+        if(alvoInt.prog>=alvoInt.tempo) alvoInt.concluir();
+      } else { alvoInt.prog=0; prog.style.display='none';
+        document.getElementById('progFill').style.width='0%'; }
+    } else { prompt.style.display='none'; prog.style.display='none'; }
+
+    // extração
+    if(baliza.visible){
+      baliza.position.set(nivel.extracao.x,4,nivel.extracao.z);
+      baliza.material.opacity=0.18+Math.sin(relogioJogo*4)*0.1;
+      baliza.rotation.y+=dt*0.6;
+      const ddx=jogador.pos.x-nivel.extracao.x,ddz=jogador.pos.z-nivel.extracao.z;
+      if(Math.hypot(ddx,ddz)<2.2) terminar(true);
+    }
+
+    // efeitos
+    for(let i=efeitos.length-1;i>=0;i--){
+      const f=efeitos[i]; f.ttl-=dt;
+      if(f.cresce&&f.obj.scale) f.obj.scale.multiplyScalar(1+dt*f.cresce);
+      if(f.fade&&f.obj.material) f.obj.material.opacity=Math.max(0,f.obj.material.opacity-dt*0.8);
+      if(f.vy!==undefined&&!f.grav) f.obj.position.y+=f.vy*dt;
+      if(f.grav){ f.vy-=dt*9; f.obj.position.y+=f.vy*dt;
+        if(f.obj.position.y<0.04) f.obj.position.y=0.04; }
+      if(f.ttl<=0){ scene.remove(f.obj); efeitos.splice(i,1); }
+    }
+  }
+  renderer.render(scene,camera);
+}
+ajustar(); atualizarMunHUD(); frame();
+</script>
+</body>
+</html>
